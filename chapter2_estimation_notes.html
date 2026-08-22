@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二章筆記｜概略估算</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#081d30; --navy:#0c2b47; --panel:#0f3358; --panel-2:#123a63;
+    --grid-line: rgba(146,203,232,0.09);
+    --cyan:#5fd4e0; --cyan-dim: rgba(95,212,224,0.35);
+    --amber:#f2a93b;
+    --text-main:#eaf6fb; --text-dim:#8fb2cc;
+    --line: rgba(234,246,251,0.16);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--navy-deep);
+    background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--text-main); font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  a{color:var(--cyan);}
+  .titleblock{ max-width:1100px; margin:0 auto; padding:64px 28px 40px; border-bottom:1px solid var(--line); }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; letter-spacing:.25em; font-size:12px; color:var(--cyan); text-transform:uppercase; }
+  h1.doctitle{ font-size:clamp(28px,5vw,52px); margin:10px 0 6px; font-weight:900; letter-spacing:-0.01em; }
+  .subtitle{color:var(--text-dim); font-size:17px; max-width:640px;}
+  .stampgrid{ margin-top:32px; display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); }
+  .stampgrid div{ padding:10px 14px; border-right:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-dim); }
+  .stampgrid div:last-child{border-right:none;}
+  .stampgrid b{display:block; color:var(--text-main); font-size:13px; margin-top:3px;}
+  @media(max-width:700px){ .stampgrid{grid-template-columns:repeat(2,1fr);} }
+  .toc{ max-width:1100px; margin:0 auto; padding:18px 28px; display:flex; flex-wrap:wrap; gap:6px 18px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:rgba(8,29,48,0.92); backdrop-filter:blur(6px); z-index:50; }
+  .toc a{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--text-dim); text-decoration:none; padding:5px 0; border-bottom:1px solid transparent; }
+  .toc a:hover{color:var(--cyan); border-color:var(--cyan-dim);}
+  .backlink{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber) !important; }
+  main{max-width:1100px; margin:0 auto; padding:20px 28px 100px;}
+  .sheet{ margin-top:56px; border:1px solid var(--line); background:linear-gradient(180deg, rgba(15,51,88,0.35), rgba(15,51,88,0.08)); padding:30px clamp(16px,4vw,40px) 36px; position:relative; }
+  .sheetno{ position:absolute; top:-13px; left:24px; background:var(--navy-deep); padding:0 10px; font-family:'IBM Plex Mono', monospace; color:var(--amber); font-size:12px; letter-spacing:.15em; }
+  h2.sec{ font-size:clamp(20px,3vw,28px); margin:6px 0 4px; font-weight:700; }
+  .sec-sub{color:var(--text-dim); font-size:14px; margin-bottom:22px;}
+  p{margin:0 0 12px; color:#d7e8f2;}
+  ul.notes{margin:0 0 14px; padding-left:20px; color:#d7e8f2;}
+  ul.notes li{margin-bottom:7px;}
+  .tag{ display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--cyan); border:1px solid var(--cyan-dim); padding:2px 8px; border-radius:2px; margin:2px 6px 2px 0; }
+  .warn{color:var(--amber);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media(max-width:760px){ .grid2{grid-template-columns:1fr;} }
+  table{border-collapse:collapse; width:100%; margin:10px 0 18px; font-size:14px;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--cyan); letter-spacing:.05em; background:rgba(95,212,224,0.06);}
+  td.num, th.num{text-align:right; font-family:'IBM Plex Mono',monospace;}
+
+  /* calculator */
+  .lab{ border:1px solid var(--line); background:var(--navy); }
+  .lab-top{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 20px 0; }
+  .lab-top .mono{font-size:11px; color:var(--text-dim); letter-spacing:.1em;}
+  .calc-body{ display:grid; grid-template-columns:1fr 1fr; gap:0; }
+  @media(max-width:800px){ .calc-body{grid-template-columns:1fr;} }
+  .calc-inputs{ padding:20px 24px 26px; border-right:1px solid var(--line); }
+  @media(max-width:800px){ .calc-inputs{border-right:none; border-bottom:1px solid var(--line);} }
+  .field{ margin-bottom:20px; }
+  .field label{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--text-dim); margin-bottom:8px; }
+  .field label span.val{ color:var(--cyan); font-weight:600; }
+  input[type=range]{ width:100%; -webkit-appearance:none; height:3px; background:var(--line); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 4px rgba(95,212,224,0.18); cursor:pointer; }
+  .calc-outputs{ padding:20px 24px 26px; }
+  .out-row{ display:flex; justify-content:space-between; align-items:baseline; padding:12px 0; border-bottom:1px solid var(--line); }
+  .out-row:last-child{border-bottom:none;}
+  .out-label{ font-size:13.5px; color:var(--text-dim); }
+  .out-value{ font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; color:var(--cyan); }
+  .out-value.amber{color:var(--amber);}
+  .out-sub{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-dim); }
+  .formula-note{ margin-top:16px; padding:12px 14px; background:rgba(95,212,224,0.05); border:1px solid var(--cyan-dim); font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); line-height:1.8; }
+
+  /* latency bars */
+  .latency-chart{ padding:10px 4px 4px; }
+  .lat-row{ display:grid; grid-template-columns:170px 1fr 100px; align-items:center; gap:12px; margin-bottom:10px; font-size:12.5px; }
+  .lat-label{ font-family:'IBM Plex Mono',monospace; color:var(--text-dim); }
+  .lat-track{ height:16px; background:rgba(255,255,255,0.04); position:relative; border:1px solid var(--line); }
+  .lat-fill{ height:100%; background:linear-gradient(90deg, var(--cyan), var(--amber)); }
+  .lat-value{ font-family:'IBM Plex Mono',monospace; text-align:right; color:var(--text-main); }
+
+  footer{ text-align:center; padding:40px 20px 60px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line); }
+  .case{ border:1px solid var(--line); background:rgba(15,51,88,0.18); margin-bottom:14px; }
+  .case summary{ cursor:pointer; list-style:none; padding:16px 20px; display:flex; align-items:center; gap:14px; justify-content:space-between; }
+  .case summary::-webkit-details-marker{display:none;}
+  .case-head{display:flex; align-items:center; gap:14px;}
+  .case-mark{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--navy-deep); background:var(--cyan); padding:3px 8px; flex-shrink:0; }
+  .case-name{font-weight:700; font-size:16px;}
+  .case-hint{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);}
+  .case-plus{ font-family:'IBM Plex Mono',monospace; font-size:18px; color:var(--cyan); transition:transform .25s ease; flex-shrink:0; }
+  .case[open] .case-plus{ transform:rotate(45deg); }
+  .case-body{ padding:2px 20px 22px; border-top:1px solid var(--line); }
+  .case-body p{font-size:14px;}
+  .case-tag{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--amber); border:1px solid rgba(242,169,59,0.4); padding:1px 7px; margin-right:6px; }
+  .checklist{list-style:none; padding:0; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:10px 24px;}
+  @media(max-width:700px){.checklist{grid-template-columns:1fr;}}
+  .checklist li{ font-size:14.5px; color:#d7e8f2; padding-left:26px; position:relative; }
+  .checklist li::before{ content:"□"; position:absolute; left:0; top:0; color:var(--cyan); font-size:16px; }
+</style>
+</head>
+<body>
+
+<div class="titleblock">
+  <div class="eyebrow">System Design Interview — An Insider's Guide</div>
+  <h1 class="doctitle">第二章：概略估算</h1>
+  <p class="subtitle">Back-of-the-Envelope Estimation — 面試時沒有計算機、沒有精確數據,只靠幾個常見的效能數字跟粗略假設,快速抓出系統的量級。</p>
+  <div class="stampgrid mono">
+    <div>原文作者<b>Alex Xu</b></div>
+    <div>圖表<b>本頁重繪 / 互動式</b></div>
+    <div>章節<b>CH.02 / 16</b></div>
+    <div>筆記語言<b>繁體中文</b></div>
+  </div>
+</div>
+
+<nav class="toc">
+  <a href="chapter1_blueprint_notes.html" class="backlink">← 第一章</a>
+  <a href="chapter3_framework_notes.html" style="color:#f2a93b;">第三章 →</a>
+  <a href="#calc">01 QPS／儲存試算器</a>
+  <a href="#s-two">02 2 的次方</a>
+  <a href="#s-latency">03 延遲數字</a>
+  <a href="#s-avail">04 可用性數字</a>
+  <a href="#s-tips">05 面試小技巧</a>
+  <a href="#s-cases">06 業界真實案例</a>
+  <a href="#s-sum">07 總結</a>
+</nav>
+
+<main>
+
+  <!-- ================= CALCULATOR ================= -->
+  <section class="sheet" id="calc">
+    <div class="sheetno">SHEET 01 — QPS 與儲存空間互動試算器</div>
+    <h2 class="sec">拖動假設,看數量級怎麼滾出來</h2>
+    <p class="sec-sub">書中用 Twitter 當例子(注意:書裡數字是虛構的練習用假設,不是 Twitter 真實數據)。左邊拖動你自己的假設,右邊即時算出 QPS、尖峰 QPS 跟 5 年媒體儲存量。</p>
+
+    <div class="lab">
+      <div class="lab-top">
+        <span class="mono">FIG. 2-LAB — LIVE CALCULATOR</span>
+        <span class="mono">單位:百萬 = 10⁶／TB = 10¹² bytes／PB = 10¹⁵ bytes</span>
+      </div>
+      <div class="calc-body">
+        <div class="calc-inputs">
+          <div class="field">
+            <label>月活躍使用者 (MAU) <span class="val" id="v-mau">300</span> 百萬</label>
+            <input type="range" id="mau" min="50" max="1000" step="10" value="300">
+          </div>
+          <div class="field">
+            <label>每日活躍比例 <span class="val" id="v-dauRatio">50</span>%</label>
+            <input type="range" id="dauRatio" min="10" max="90" step="5" value="50">
+          </div>
+          <div class="field">
+            <label>每人每日發文數 <span class="val" id="v-postsPerDay">2</span> 篇</label>
+            <input type="range" id="postsPerDay" min="1" max="10" step="1" value="2">
+          </div>
+          <div class="field">
+            <label>含媒體的貼文比例 <span class="val" id="v-mediaRatio">10</span>%</label>
+            <input type="range" id="mediaRatio" min="0" max="100" step="5" value="10">
+          </div>
+          <div class="field">
+            <label>平均媒體檔案大小 <span class="val" id="v-mediaSize">1</span> MB</label>
+            <input type="range" id="mediaSize" min="0.2" max="10" step="0.2" value="1">
+          </div>
+          <div class="field">
+            <label>資料保存年限 <span class="val" id="v-years">5</span> 年</label>
+            <input type="range" id="years" min="1" max="10" step="1" value="5">
+          </div>
+        </div>
+        <div class="calc-outputs">
+          <div class="out-row">
+            <div>
+              <div class="out-label">日活躍使用者 DAU</div>
+              <div class="out-sub">MAU × 活躍比例</div>
+            </div>
+            <div class="out-value" id="out-dau">150 M</div>
+          </div>
+          <div class="out-row">
+            <div>
+              <div class="out-label">平均 QPS</div>
+              <div class="out-sub">DAU × 發文數 ÷ 86,400 秒</div>
+            </div>
+            <div class="out-value" id="out-qps">3,472</div>
+          </div>
+          <div class="out-row">
+            <div>
+              <div class="out-label">尖峰 QPS</div>
+              <div class="out-sub">粗略估計 = 平均 QPS × 2</div>
+            </div>
+            <div class="out-value amber" id="out-peakqps">6,944</div>
+          </div>
+          <div class="out-row">
+            <div>
+              <div class="out-label">每日媒體儲存量</div>
+              <div class="out-sub">DAU × 發文數 × 含媒體比例 × 檔案大小</div>
+            </div>
+            <div class="out-value" id="out-dailystorage">30 TB</div>
+          </div>
+          <div class="out-row">
+            <div>
+              <div class="out-label">保存年限總儲存量</div>
+              <div class="out-sub">每日儲存量 × 365 × 年限</div>
+            </div>
+            <div class="out-value amber" id="out-totalstorage">54.75 PB</div>
+          </div>
+          <div class="formula-note">
+            提醒:面試時這些數字都要「四捨五入到好算」,例如 3,472 直接講「大約 3,500」就好,精準到個位數反而浪費時間。
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= power of two ================= -->
+  <section class="sheet" id="s-two">
+    <div class="sheetno">SHEET 02</div>
+    <h2 class="sec">2 的次方:資料量單位要先背熟</h2>
+    <p class="sec-sub">分散式系統的資料量動輒破表,但所有換算都建立在「2 的次方」這個基本功上。1 byte = 8 bits,1 個 ASCII 字元佔 1 byte。</p>
+    <table>
+      <tr><th>2 的次方</th><th class="num">精確值</th><th>簡稱</th><th>全名</th></tr>
+      <tr><td>2¹⁰</td><td class="num">1,024</td><td>1 KB</td><td>Kilobyte</td></tr>
+      <tr><td>2²⁰</td><td class="num">1,048,576</td><td>1 MB</td><td>Megabyte</td></tr>
+      <tr><td>2³⁰</td><td class="num">1,073,741,824</td><td>1 GB</td><td>Gigabyte</td></tr>
+      <tr><td>2⁴⁰</td><td class="num">1,099,511,627,776</td><td>1 TB</td><td>Terabyte</td></tr>
+      <tr><td>2⁵⁰</td><td class="num">1,125,899,906,842,624</td><td>1 PB</td><td>Petabyte</td></tr>
+    </table>
+    <p class="warn">面試中不需要背到精確值,知道量級（KB→MB→GB→TB→PB 每級差約 1000 倍）就夠用。</p>
+  </section>
+
+  <!-- ================= latency ================= -->
+  <section class="sheet" id="s-latency">
+    <div class="sheetno">SHEET 03</div>
+    <h2 class="sec">每個工程師都該知道的延遲數字</h2>
+    <p class="sec-sub">出自 Google 資深院士 Jeff Dean 整理的著名數據(2010 年版本,部分數字隨硬體進步已經更快,但「量級關係」依然成立)。下面用長條圖畫出相對比例(對數尺度概念,僅供直覺比較)。</p>
+    <div class="latency-chart">
+      <div class="lat-row"><div class="lat-label">L1 快取存取</div><div class="lat-track"><div class="lat-fill" style="width:0.3%"></div></div><div class="lat-value">0.5 ns</div></div>
+      <div class="lat-row"><div class="lat-label">分支預測失誤</div><div class="lat-track"><div class="lat-fill" style="width:1.5%"></div></div><div class="lat-value">5 ns</div></div>
+      <div class="lat-row"><div class="lat-label">L2 快取存取</div><div class="lat-track"><div class="lat-fill" style="width:2%"></div></div><div class="lat-value">7 ns</div></div>
+      <div class="lat-row"><div class="lat-label">Mutex 鎖定/解鎖</div><div class="lat-track"><div class="lat-fill" style="width:8%"></div></div><div class="lat-value">25 ns</div></div>
+      <div class="lat-row"><div class="lat-label">主記憶體存取</div><div class="lat-track"><div class="lat-fill" style="width:30%"></div></div><div class="lat-value">100 ns</div></div>
+      <div class="lat-row"><div class="lat-label">Zippy 壓縮 1KB</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">3,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">同資料中心來回一趟</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">500,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">SSD 隨機讀取</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">1,000,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">記憶體循序讀 1MB</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">1,000,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">同地區資料中心來回</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">1,500,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">磁碟定位 (seek)</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">10,000,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">SSD 循序讀 1MB</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">1,000,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">磁碟循序讀 1MB</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">30,000,000 ns</div></div>
+      <div class="lat-row"><div class="lat-label">美國 ⇄ 歐洲網路來回</div><div class="lat-track"><div class="lat-fill" style="width:100%"></div></div><div class="lat-value">150,000,000 ns</div></div>
+    </div>
+    <p style="font-size:13px; color:#8fb2cc;">*長條寬度以主記憶體存取(100ns)為基準等比例放大顯示到 100% 上限,單純方便閱讀,並非精準對數尺度繪圖。</p>
+    <p><b>從這些數字可以歸納出的結論:</b></p>
+    <ul class="notes">
+      <li>記憶體很快,磁碟很慢 — 差距是好幾個量級。</li>
+      <li>盡量避免磁碟定位(disk seek)。</li>
+      <li>簡單的壓縮演算法夠快,傳輸前先壓縮資料划算。</li>
+      <li>跨資料中心傳輸資料需要時間,設計時要把這個成本算進去。</li>
+    </ul>
+  </section>
+
+  <!-- ================= availability ================= -->
+  <section class="sheet" id="s-avail">
+    <div class="sheetno">SHEET 04</div>
+    <h2 class="sec">可用性數字:「幾個 9」代表什麼</h2>
+    <p class="sec-sub">高可用性(High Availability)是系統能持續正常運作的能力,通常用百分比表示;SLA(服務等級協議)就是服務商跟客戶之間對這個百分比的正式承諾。多數雲端服務商(AWS、Google Cloud、Azure)的 SLA 都設在 99.9% 以上。</p>
+    <table>
+      <tr><th>可用性</th><th>俗稱</th><th class="num">每年容許停機時間</th></tr>
+      <tr><td>99%</td><td>兩個 9</td><td class="num">約 3.65 天</td></tr>
+      <tr><td>99.9%</td><td>三個 9</td><td class="num">約 8.76 小時</td></tr>
+      <tr><td>99.99%</td><td>四個 9</td><td class="num">約 52.6 分鐘</td></tr>
+      <tr><td>99.999%</td><td>五個 9</td><td class="num">約 5.26 分鐘</td></tr>
+    </table>
+    <p class="warn">9 越多,系統要求越高,成本跟複雜度通常也跟著往上跳,不是預設都要衝到五個 9。</p>
+  </section>
+
+  <!-- ================= tips ================= -->
+  <section class="sheet" id="s-tips">
+    <div class="sheetno">SHEET 05</div>
+    <h2 class="sec">面試小技巧:重點是過程,不是精準答案</h2>
+    <div class="grid2">
+      <div>
+        <ul class="notes">
+          <li><b>四捨五入、抓近似值：</b>面試中不用心算「99987 ÷ 9.1」,直接簡化成「100,000 ÷ 10」就好,精準度不是重點。</li>
+          <li><b>把假設寫下來：</b>寫在白板或紙上,方便之後回頭參照。</li>
+        </ul>
+      </div>
+      <div>
+        <ul class="notes">
+          <li><b>標清楚單位：</b>寫「5」的時候,到底是 5 KB 還是 5 MB？永遠標明單位,別讓自己搞混。</li>
+          <li><b>常考的估算類型：</b>QPS、尖峰 QPS、儲存空間、快取大小、需要幾台伺服器 — 這些都建議平常就先練習過。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Real world cases ================= -->
+  <section class="sheet" id="s-cases">
+    <div class="sheetno">SHEET 06 — 課外補充</div>
+    <h2 class="sec">業界真實案例：估算跟現實差多少</h2>
+    <p class="sec-sub">三個真實資料佐證的案例,幫你感受「粗估」在現實中會遇到什麼落差。點開看細節,不看也不影響你理解本章。</p>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 01</span>
+          <div>
+            <div class="case-name">Twitter 2013:尖峰是平均的 25 倍,不是 2 倍</div>
+            <div class="case-hint">對照 SHEET 01．QPS 試算器</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">真實數字</span>2013 年 8 月 3 日,日本觀眾在看動畫《天空之城》,劇情高潮那一刻大家瘋狂發文,Twitter 單秒衝上 <b>143,199</b> 則推文,寫下當時的世界紀錄。<a href="https://blog.x.com/engineering/en_us/a/2013/new-tweets-per-second-record-and-how" target="_blank" rel="noopener">(Twitter 官方工程部落格)</a></p>
+        <p><span class="case-tag">落差在哪</span>Twitter 當時平均每秒推文數大約是 <b>5,700</b> — 也就是說那次尖峰是平均值的 <b>約 25 倍</b>,遠遠超過本章「尖峰 QPS = 平均 QPS × 2」這種教科書式的粗估倍數。</p>
+        <p><span class="case-tag">為什麼會差這麼多</span>「× 2」這個經驗法則適用於一般日常的流量波動(例如白天比半夜多);但遇到全球同時發生、情緒驅動的「事件型尖峰」(演唱會、球賽關鍵時刻、跨年、名人過世等),真實倍數可能是 10 倍、20 倍甚至更高。Twitter 工程團隊也提到,他們是在 2010 年世界盃期間被真實尖峰衝垮過,才重新設計架構去因應這種數量級的落差。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:粗估公式是拿來「起步」用的,面試時可以先用 × 2 當預設答案,但最好補一句「如果是社群平台,遇到病毒式擴散事件,尖峰倍數可能要抓更高」,展現你知道公式的極限在哪裡。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 02</span>
+          <div>
+            <div class="case-name">AWS S3「11 個 9」:耐久度不是可用性</div>
+            <div class="case-hint">對照 SHEET 04．可用性數字</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">兩個常被搞混的詞</span>AWS 官方長期把 S3 標準儲存的設計目標訂在「99.999999999%」— 也就是「11 個 9」的<b>耐久度(durability)</b>,意思是資料本身不會憑空遺失或損毀的機率有多高。但 S3 官方公告的<b>可用性(availability)SLA</b> 卻只有 99.9%~99.99%(依儲存等級不同)。</p>
+        <p><span class="case-tag">差別在哪</span>耐久度講的是「資料還在不在」,可用性講的是「你現在能不能連上、讀到它」。11 個 9 的耐久度代表資料幾乎不會憑空消失(因為背後做了大量跨機房複製),但偶爾還是可能因為維護、網路問題等暫時連不上、讀取失敗 — 那是可用性的問題,兩者是分開計算、分開承諾的指標。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:面試被問「這系統要幾個 9」時,先確認對方問的是「資料不遺失」還是「服務隨時連得上」— 這是兩個不同的承諾,答案跟設計手法也不一樣。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 03</span>
+          <div>
+            <div class="case-name">十年過去,「磁碟定位很慢」這個假設還成立嗎</div>
+            <div class="case-hint">對照 SHEET 03．延遲數字</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">書裡也提醒了</span>Jeff Dean 那組經典延遲數字是 2010 年整理的,書中特別註明「部分數字隨硬體進步已經過時」。這十幾年裡,傳統機械硬碟(HDD)大幅被 SSD、甚至更快的 NVMe 介面取代,「磁碟定位(disk seek)很慢」這個 2010 年的痛點,在很多現代基礎設施裡已經沒那麼致命 — 因為新世代儲存設備幾乎沒有機械手臂移動的物理限制。</p>
+        <p><span class="case-tag">但结论没变</span>即使硬體數字一直在刷新,書裡歸納出的四個結論(記憶體快、磁碟慢;避免磁碟定位;壓縮再傳輸;跨機房有延遲成本)這個「量級關係」到現在都還成立 — 只是實際的毫秒/奈秒數字要記得每隔幾年更新一次。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:背的不該是死數字,而是「誰比誰快一個量級」這個相對關係;真的要引用絕對數字時,記得註明是哪一年的硬體水準。</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= summary ================= -->
+  <section class="sheet" id="s-sum">
+    <div class="sheetno">SHEET 07 — 最終蓋章</div>
+    <h2 class="sec">本章重點回顧</h2>
+    <p class="sec-sub">概略估算考的不是數學,是「你能不能在資訊不完整的情況下,快速抓出系統要面對的量級」。</p>
+    <ul class="checklist">
+      <li>背熟 2 的次方對照表(KB→MB→GB→TB→PB)</li>
+      <li>記住記憶體快、磁碟慢的量級差距</li>
+      <li>知道「幾個 9」對應的停機時間感覺</li>
+      <li>估算時大膽四捨五入,別浪費時間算精準值</li>
+      <li>每個假設都寫下來,單位標清楚</li>
+      <li>平時多練習 QPS／儲存空間估算題型</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  筆記整理自 Alex Xu, <i>System Design Interview: An Insider's Guide</i> — 第二章「Back-of-the-Envelope Estimation」。<br>
+  圖表為重新繪製之互動版本,非原書掃描圖片；範例數字為書中練習用假設,非真實公司數據。
+</footer>
+
+<script>
+(function(){
+  const ids = ['mau','dauRatio','postsPerDay','mediaRatio','mediaSize','years'];
+  const els = {};
+  ids.forEach(id => els[id] = document.getElementById(id));
+
+  function fmtNum(n, digits){
+    return n.toLocaleString('en-US', {maximumFractionDigits: digits !== undefined ? digits : 0});
+  }
+
+  function calc(){
+    const mau = parseFloat(els.mau.value); // millions
+    const dauRatio = parseFloat(els.dauRatio.value) / 100;
+    const posts = parseFloat(els.postsPerDay.value);
+    const mediaRatio = parseFloat(els.mediaRatio.value) / 100;
+    const mediaSize = parseFloat(els.mediaSize.value); // MB
+    const years = parseFloat(els.years.value);
+
+    document.getElementById('v-mau').textContent = mau;
+    document.getElementById('v-dauRatio').textContent = els.dauRatio.value;
+    document.getElementById('v-postsPerDay').textContent = posts;
+    document.getElementById('v-mediaRatio').textContent = els.mediaRatio.value;
+    document.getElementById('v-mediaSize').textContent = mediaSize;
+    document.getElementById('v-years').textContent = years;
+
+    const dauM = mau * dauRatio; // millions
+    const dau = dauM * 1e6;
+
+    const qps = (dau * posts) / 86400;
+    const peakQps = qps * 2;
+
+    // storage: dau * posts * mediaRatio * mediaSize(MB) => MB per day
+    const dailyStorageMB = dau * posts * mediaRatio * mediaSize;
+    const dailyStorageTB = dailyStorageMB / 1e6; // 1 TB = 1e6 MB (approx, decimal)
+    const totalStoragePB = (dailyStorageTB * 365 * years) / 1000; // 1 PB = 1000 TB approx
+
+    document.getElementById('out-dau').textContent = fmtNum(dauM, 1) + ' M';
+    document.getElementById('out-qps').textContent = fmtNum(qps);
+    document.getElementById('out-peakqps').textContent = fmtNum(peakQps);
+    document.getElementById('out-dailystorage').textContent = fmtNum(dailyStorageTB, 1) + ' TB';
+    document.getElementById('out-totalstorage').textContent = fmtNum(totalStoragePB, 2) + ' PB';
+  }
+
+  ids.forEach(id => els[id].addEventListener('input', calc));
+  calc();
+})();
+</script>
+
+</body>
+</html>

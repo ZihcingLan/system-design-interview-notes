@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第三章筆記｜系統設計面試框架</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#081d30; --navy:#0c2b47; --panel:#0f3358;
+    --grid-line: rgba(146,203,232,0.09);
+    --cyan:#5fd4e0; --cyan-dim: rgba(95,212,224,0.35);
+    --amber:#f2a93b; --text-main:#eaf6fb; --text-dim:#8fb2cc; --line: rgba(234,246,251,0.16);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--navy-deep);
+    background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--text-main); font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  a{color:var(--cyan);}
+  .titleblock{ max-width:1100px; margin:0 auto; padding:64px 28px 40px; border-bottom:1px solid var(--line); }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; letter-spacing:.25em; font-size:12px; color:var(--cyan); text-transform:uppercase; }
+  h1.doctitle{ font-size:clamp(28px,5vw,52px); margin:10px 0 6px; font-weight:900; letter-spacing:-0.01em; }
+  .subtitle{color:var(--text-dim); font-size:17px; max-width:640px;}
+  .stampgrid{ margin-top:32px; display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); }
+  .stampgrid div{ padding:10px 14px; border-right:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-dim); }
+  .stampgrid div:last-child{border-right:none;}
+  .stampgrid b{display:block; color:var(--text-main); font-size:13px; margin-top:3px;}
+  @media(max-width:700px){ .stampgrid{grid-template-columns:repeat(2,1fr);} }
+  .toc{ max-width:1100px; margin:0 auto; padding:18px 28px; display:flex; flex-wrap:wrap; gap:6px 18px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:rgba(8,29,48,0.92); backdrop-filter:blur(6px); z-index:50; }
+  .toc a{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--text-dim); text-decoration:none; padding:5px 0; border-bottom:1px solid transparent; }
+  .toc a:hover{color:var(--cyan); border-color:var(--cyan-dim);}
+  main{max-width:1100px; margin:0 auto; padding:20px 28px 100px;}
+  .sheet{ margin-top:56px; border:1px solid var(--line); background:linear-gradient(180deg, rgba(15,51,88,0.35), rgba(15,51,88,0.08)); padding:30px clamp(16px,4vw,40px) 36px; position:relative; }
+  .sheetno{ position:absolute; top:-13px; left:24px; background:var(--navy-deep); padding:0 10px; font-family:'IBM Plex Mono', monospace; color:var(--amber); font-size:12px; letter-spacing:.15em; }
+  h2.sec{ font-size:clamp(20px,3vw,28px); margin:6px 0 4px; font-weight:700; }
+  .sec-sub{color:var(--text-dim); font-size:14px; margin-bottom:22px;}
+  p{margin:0 0 12px; color:#d7e8f2;}
+  ul.notes{margin:0 0 14px; padding-left:20px; color:#d7e8f2;}
+  ul.notes li{margin-bottom:7px;}
+  .tag{ display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--cyan); border:1px solid var(--cyan-dim); padding:2px 8px; border-radius:2px; margin:2px 6px 2px 0; }
+  .warn{color:var(--amber);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media(max-width:760px){ .grid2{grid-template-columns:1fr;} }
+  blockquote{
+    margin:0 0 16px; padding:14px 18px; border-left:3px solid var(--cyan);
+    background:rgba(95,212,224,0.05); font-size:14px; color:#d7e8f2; font-style:italic;
+  }
+  .dialogue{ border:1px solid var(--line); background:rgba(255,255,255,0.02); padding:4px 18px; margin:14px 0; }
+  .dialogue p{ font-size:13.5px; padding:8px 0; border-bottom:1px dashed var(--line); }
+  .dialogue p:last-child{border-bottom:none;}
+  .dialogue b{color:var(--cyan); font-family:'IBM Plex Mono',monospace; font-size:11.5px;}
+
+  /* timeline */
+  .lab{ border:1px solid var(--line); background:var(--navy); }
+  .lab-top{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 20px 0; }
+  .lab-top .mono{font-size:11px; color:var(--text-dim); letter-spacing:.1em;}
+  .timeline{ display:flex; margin:20px 20px 0; height:64px; border:1px solid var(--line); overflow:hidden; }
+  .tl-seg{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; border-right:1px solid var(--line);
+    background:rgba(95,212,224,0.04);
+    transition:background .2s ease;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .tl-seg:last-child{border-right:none;}
+  .tl-seg:hover{ background:rgba(95,212,224,0.1); }
+  .tl-seg.active{ background:rgba(242,169,59,0.16); }
+  .tl-seg .tl-name{ font-size:12.5px; color:var(--text-main); font-weight:600;}
+  .tl-seg .tl-time{ font-size:10px; color:var(--text-dim); margin-top:3px;}
+  .tl-seg.active .tl-time{ color:var(--amber); }
+  .step-panel{ padding:22px 24px 26px; }
+  .step-head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .step-num{ font-family:'IBM Plex Mono',monospace; color:var(--navy-deep); background:var(--cyan); width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; }
+  #stepTitle{ font-size:19px; font-weight:700; margin:0; }
+  #stepRange{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber); }
+  #stepBullets{ padding-left:18px; margin:14px 0 0; color:#d7e8f2; font-size:14.5px; }
+  #stepBullets li{ margin-bottom:7px; }
+
+  table{border-collapse:collapse; width:100%; margin:10px 0 18px; font-size:14px;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--cyan); letter-spacing:.05em; background:rgba(95,212,224,0.06);}
+
+  .dovsdont{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media(max-width:760px){ .dovsdont{grid-template-columns:1fr;} }
+  .do-card, .dont-card{ border:1px solid var(--line); padding:18px 20px; }
+  .do-card{ border-left:3px solid var(--cyan); }
+  .dont-card{ border-left:3px solid var(--amber); }
+  .do-card h3, .dont-card h3{ margin:0 0 10px; font-size:15px; font-family:'IBM Plex Mono',monospace; }
+  .do-card h3{color:var(--cyan);} .dont-card h3{color:var(--amber);}
+  .do-card ul, .dont-card ul{ margin:0; padding-left:18px; font-size:13.5px; color:#d7e8f2; }
+  .do-card li, .dont-card li{ margin-bottom:8px; }
+
+  .case{ border:1px solid var(--line); background:rgba(15,51,88,0.18); margin-bottom:14px; }
+  .case summary{ cursor:pointer; list-style:none; padding:16px 20px; display:flex; align-items:center; gap:14px; justify-content:space-between; }
+  .case summary::-webkit-details-marker{display:none;}
+  .case-head{display:flex; align-items:center; gap:14px;}
+  .case-mark{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--navy-deep); background:var(--cyan); padding:3px 8px; flex-shrink:0; }
+  .case-name{font-weight:700; font-size:16px;}
+  .case-hint{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);}
+  .case-plus{ font-family:'IBM Plex Mono',monospace; font-size:18px; color:var(--cyan); transition:transform .25s ease; flex-shrink:0; }
+  .case[open] .case-plus{ transform:rotate(45deg); }
+  .case-body{ padding:2px 20px 22px; border-top:1px solid var(--line); }
+  .case-body p{font-size:14px;}
+  .case-tag{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--amber); border:1px solid rgba(242,169,59,0.4); padding:1px 7px; margin-right:6px; }
+
+  footer{ text-align:center; padding:40px 20px 60px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line); }
+  .checklist{list-style:none; padding:0; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:10px 24px;}
+  @media(max-width:700px){.checklist{grid-template-columns:1fr;}}
+  .checklist li{ font-size:14.5px; color:#d7e8f2; padding-left:26px; position:relative; }
+  .checklist li::before{ content:"□"; position:absolute; left:0; top:0; color:var(--cyan); font-size:16px; }
+</style>
+</head>
+<body>
+
+<div class="titleblock">
+  <div class="eyebrow">System Design Interview — An Insider's Guide</div>
+  <h1 class="doctitle">第三章：系統設計面試框架</h1>
+  <p class="subtitle">A Framework for System Design Interviews — 這不是一場「誰能設計出完美系統」的考試,而是一場模擬「兩個同事一起解決模糊問題」的過程。過程比結果重要。</p>
+  <div class="stampgrid mono">
+    <div>原文作者<b>Alex Xu</b></div>
+    <div>圖表<b>本頁重繪 / 互動式</b></div>
+    <div>章節<b>CH.03 / 16</b></div>
+    <div>筆記語言<b>繁體中文</b></div>
+  </div>
+</div>
+
+<nav class="toc">
+  <a href="index.html" style="color:#f2a93b;">← 目錄</a>
+  <a href="chapter4_ratelimiter_notes.html" style="color:#f2a93b;">第四章 →</a>
+  <a href="#s-eval">01 面試官在看什麼</a>
+  <a href="#lab">02 45分鐘時間軸</a>
+  <a href="#s-dodont">03 該做／不該做</a>
+  <a href="#s-cases">04 業界真實案例</a>
+  <a href="#s-sum">05 總結</a>
+</nav>
+
+<main>
+
+  <!-- ================= evaluation ================= -->
+  <section class="sheet" id="s-eval">
+    <div class="sheetno">SHEET 01</div>
+    <h2 class="sec">面試官到底在看什麼？</h2>
+    <p class="sec-sub">沒有人期待你在一小時內設計出一個要幾百幾千位工程師才能蓋出來的真實系統。面試考的是「解決模糊問題的過程」,不是最終設計本身。</p>
+    <ul class="notes">
+      <li><b>協作能力：</b>能不能把面試官當隊友一起討論,而不是自己悶頭solo。</li>
+      <li><b>抗壓表現：</b>面對開放式、沒有標準答案的問題,是否還能有條理地往前推進。</li>
+      <li><b>化解模糊的能力：</b>問題一開始通常又大又模糊,怎麼把它拆解、聚焦。</li>
+      <li><b>提問能力：</b>很多面試官特別看重「你會不會問對問題」這件事本身。</li>
+    </ul>
+    <p><b class="warn">面試官在找的紅旗警訊：</b></p>
+    <ul class="notes">
+      <li><b>過度工程(Over-engineering)：</b>工程師的職業病 — 沉迷於設計上的「純粹」,卻忽略了真實世界的取捨(trade-off);許多公司都為這種不自覺的過度設計付出高昂代價。</li>
+      <li><b>思維狹隘、固執己見：</b>聽不進去回饋、只想照自己原本的想法走到底。</li>
+    </ul>
+  </section>
+
+  <!-- ================= TIMELINE LAB ================= -->
+  <section class="sheet" id="lab">
+    <div class="sheetno">SHEET 02 — 45 分鐘互動時間軸</div>
+    <h2 class="sec">四步驟框架,點下去看每一步要做什麼</h2>
+    <p class="sec-sub">這是書中建議的粗略時間分配(不是硬性規定,實際依題目範圍和面試官風格調整)。點時間軸上的區塊,看每一步的重點跟範例對話。</p>
+
+    <div class="lab">
+      <div class="lab-top">
+        <span class="mono">FIG. 3-LAB — 45-MIN INTERVIEW TIMELINE</span>
+        <span class="mono">總長 45 分鐘</span>
+      </div>
+      <div class="timeline" id="timeline">
+        <div class="tl-seg active" data-step="1" style="flex:6.5;">
+          <div class="tl-name">① 理解問題</div>
+          <div class="tl-time">3–10 min</div>
+        </div>
+        <div class="tl-seg" data-step="2" style="flex:12.5;">
+          <div class="tl-name">② 高層設計</div>
+          <div class="tl-time">10–15 min</div>
+        </div>
+        <div class="tl-seg" data-step="3" style="flex:17.5;">
+          <div class="tl-name">③ 深入細節</div>
+          <div class="tl-time">10–25 min</div>
+        </div>
+        <div class="tl-seg" data-step="4" style="flex:4;">
+          <div class="tl-name">④ 總結收尾</div>
+          <div class="tl-time">3–5 min</div>
+        </div>
+      </div>
+      <div class="step-panel">
+        <div class="step-head">
+          <div class="step-num" id="stepNumBadge">1</div>
+          <h3 id="stepTitle">理解問題、確立設計範圍</h3>
+          <span id="stepRange">3–10 分鐘</span>
+        </div>
+        <ul id="stepBullets"></ul>
+        <div id="stepExtra"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= dos and donts ================= -->
+  <section class="sheet" id="s-dodont">
+    <div class="sheetno">SHEET 03</div>
+    <h2 class="sec">該做／不該做</h2>
+    <p class="sec-sub">書末給的整理,幾乎每一條都跟「溝通」有關,而不是技術本身。</p>
+    <div class="dovsdont">
+      <div class="do-card">
+        <h3>DO'S</h3>
+        <ul>
+          <li>永遠先問澄清問題,不要假設你的假設是對的</li>
+          <li>先搞懂問題的需求範圍</li>
+          <li>沒有唯一正確答案 — 新創公司跟千萬用戶的成熟公司,合理設計完全不同</li>
+          <li>讓面試官知道你在想什麼,持續溝通</li>
+          <li>盡量提出多種可能的做法</li>
+          <li>跟面試官對藍圖達成共識後,再逐一深入細節,先做最關鍵的元件</li>
+          <li>把想法丟出來跟面試官討論,把她當隊友</li>
+          <li>永不放棄</li>
+        </ul>
+      </div>
+      <div class="dont-card">
+        <h3>DON'TS</h3>
+        <ul>
+          <li>不要對常見面試題目毫無準備</li>
+          <li>不要還沒釐清需求跟假設就急著跳進解法</li>
+          <li>不要一開始就在單一元件上鑽牛角尖,要先給高層設計再往下挖</li>
+          <li>卡住的時候不要不敢開口要提示</li>
+          <li>不要悶頭思考不說話,要溝通</li>
+          <li>提出設計不代表面試結束 — 面試官說結束才算結束,要主動、常態性地要回饋</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Real world cases ================= -->
+  <section class="sheet" id="s-cases">
+    <div class="sheetno">SHEET 04 — 課外補充</div>
+    <h2 class="sec">業界真實案例：這些原則不是空話</h2>
+    <p class="sec-sub">三個跟本章核心概念(釐清假設、避免過度工程、結構化評估)相關的真實故事,點開看細節就好,不看也不影響你理解本章。</p>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 01</span>
+          <div>
+            <div class="case-name">NASA 火星氣候探測者號:一個沒問清楚的單位換算</div>
+            <div class="case-hint">對照 SHEET 02．Step 1 理解問題</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">真實事件</span>1999 年,NASA 的火星氣候探測者號(Mars Climate Orbiter)在準備進入火星軌道時解體損毀,整個任務耗資約 3.27 億美元。事後調查發現,問題出在其中一個地面軟體團隊用「英制單位(磅力·秒)」計算推力數據,但探測器的導航系統預期收到的是「公制單位(牛頓·秒)」— 雙方都沒有明確核對過這個假設。</p>
+        <p><span class="case-tag">跟本章的關聯</span>這正是書裡「Jimmy 的故事」想提醒的反面教材:太快跳進解法、不先把假設攤開來核對,問題會被隱藏到最後一刻才爆炸。系統設計面試裡,「你的使用者是幾百萬人還是幾千人」「這個 ID 是 64 位元還是 128 位元」這種問題如果沒問清楚,做出來的設計方向可能整個是錯的 — 差別只是面試的代價是分數,真實世界的代價可能是幾億美金。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:寫下假設、標清楚單位,不是形式主義,是實際會讓系統失敗或成功的關鍵動作。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 02</span>
+          <div>
+            <div class="case-name">《人月神話》的「第二系統效應」</div>
+            <div class="case-hint">對照 SHEET 01．過度工程紅旗</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">經典理論</span>軟體工程師 Fred Brooks 在經典著作《The Mythical Man-Month(人月神話)》中提出「第二系統效應(Second-System Effect)」:工程師做完一個簡單、克制、成功的第一個系統後,做「第二個系統」時往往會忍不住把所有想加的花俏功能、想耍的技巧全部塞進去,結果做出一個過度複雜、臃腫、難以維護的系統。</p>
+        <p><span class="case-tag">跟本章的關聯</span>這就是書裡說的「過度工程是工程師的職業病」的經典理論根源 — 面試官很敏感地在抓這個訊號:你是不是為了展示自己會很多技術,硬把消息佇列、多資料中心、分片全部塞進一個原本用不到這麼複雜架構的設計裡?好的系統設計是「剛好夠用」,不是「用上所有你會的招式」。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:面試時可以自問一句「這個元件是題目真的需要,還是我只是想展示我會?」— 這正是面試官想看到你有沒有的判斷力。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 03</span>
+          <div>
+            <div class="case-name">Google 的結構化面試:為什麼「過程」比「答案」更容易評分</div>
+            <div class="case-hint">對照 SHEET 01．面試官在看什麼</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">真實做法</span>Google 前人資長 Laszlo Bock 在《Work Rules!》書中提到,Google 長期採用「結構化面試(structured interview)」— 面試官依照固定的評估準則(rubric)給訊號,再交由獨立的「招募委員會(Hiring Committee)」根據多位面試官的書面回饋,而不是單一面試官的主觀好惡,共同決定是否錄取。</p>
+        <p><span class="case-tag">跟本章的關聯</span>這也解釋了為什麼系統設計面試官會反覆說「沒有標準答案,重點是過程」— 因為結構化面試的評分本來就不是看「你設計出的架構圖跟正解一模一樣嗎」,而是看你有沒有展現出可以被具體記錄下來的訊號:有沒有問對問題、有沒有考慮 trade-off、遇到回饋會不會調整。這些「訊號」才是委員會真正拿去比較不同候選人的依據。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:與其想著「怎麼答出正解」,不如想著「我要怎麼讓面試官事後寫報告時,有具體的例子可以引用來證明我的能力」。</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= summary ================= -->
+  <section class="sheet" id="s-sum">
+    <div class="sheetno">SHEET 05 — 最終蓋章</div>
+    <h2 class="sec">本章重點回顧</h2>
+    <p class="sec-sub">系統設計面試考的是解決模糊問題的過程,不是設計出完美系統。</p>
+    <ul class="checklist">
+      <li>先問清楚,不要急著給答案</li>
+      <li>先出高層設計,取得面試官認同再深入</li>
+      <li>用概略估算驗證你的藍圖撐不撐得住</li>
+      <li>時間管理:理解→設計→深挖→收尾</li>
+      <li>主動指出自己設計的瓶頸與可改進處</li>
+      <li>全程跟面試官保持溝通,把她當隊友</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  筆記整理自 Alex Xu, <i>System Design Interview: An Insider's Guide</i> — 第三章「A Framework for System Design Interviews」。<br>
+  圖表為重新繪製之互動版本,非原書掃描圖片。
+</footer>
+
+<script>
+(function(){
+  const steps = {
+    1: {
+      title: "理解問題、確立設計範圍",
+      range: "3–10 分鐘",
+      bullets: [
+        "不要當「Jimmy」— 書中用一個急著搶答的學生比喻:面試不是搶快問答比賽,答得快沒有加分。",
+        "慢下來,先問問題釐清需求跟假設,這是工程師最重要的能力之一。",
+        "常見的釐清問題:要做哪些具體功能?使用者規模多大?預期多快要擴大規模(3個月/半年/一年)?公司現有技術棧是什麼?",
+        "面試官如果沒有直接回答,而是要你自己做假設 — 記得把假設寫在白板上,之後會用到。"
+      ],
+      extra: `<div class="dialogue">
+        <p><b>範例對話(設計動態消息系統)</b></p>
+        <p>你:「這是手機 App、網頁,還是兩者都要？」面試官:「兩者都要。」</p>
+        <p>你:「最重要的功能是什麼？」面試官:「能發文、能看朋友的動態消息。」</p>
+        <p>你:「消息是照時間倒序排列,還是有特定排序？」面試官:「先假設用時間倒序排列就好。」</p>
+        <p>你:「一個使用者最多可以有幾個朋友？」面試官:「5000 個。」</p>
+        <p>你:「流量大概多大？」面試官:「每日活躍使用者(DAU)1000 萬。」</p>
+      </div>`
+    },
+    2: {
+      title: "提出高層設計並取得認同",
+      range: "10–15 分鐘",
+      bullets: [
+        "目標是跟面試官一起訂出高層設計藍圖,並取得她的認同 — 這階段要把面試官當隊友一起合作。",
+        "在白板上畫出關鍵元件的方框圖:客戶端(手機/網頁)、API、Web 伺服器、資料儲存、快取、CDN、訊息佇列等。",
+        "用概略估算(第二章學的技巧)驗證這個藍圖撐不撐得住規模;開口跟面試官確認要不要花時間做這個估算。",
+        "如果可以,帶過幾個具體使用案例,這能幫你聚焦設計方向,也常常會發現一開始沒想到的邊界情況。",
+        "要不要談到 API 端點、資料庫欄位設計?看題目大小 — 「設計 Google 搜尋引擎」談這個太細,「設計一個多人撲克遊戲後端」談這個很合理。跟面試官溝通確認。"
+      ],
+      extra: `<p style="font-size:13.5px; color:#8fb2cc;">範例(設計動態消息系統):高層設計可以拆成兩條流程 — <b>發文流程</b>(使用者發文,資料寫入快取/資料庫,推送到朋友的動態消息)跟<b>動態消息組成流程</b>(把朋友們的貼文依時間倒序彙整起來)。這兩條流程的細節會在第十一章詳細展開。</p>`
+    },
+    3: {
+      title: "設計深入探討",
+      range: "10–25 分鐘",
+      bullets: [
+        "進到這一步之前,你們應該已經:對整體目標與功能範圍達成共識、畫出高層設計藍圖、拿到面試官對高層設計的回饋、對接下來要深挖哪裡有初步方向。",
+        "跟面試官一起找出架構中最該優先深入的元件 — 每場面試的重點都不一樣:有的面試官愛談高層設計全貌,資深職位可能更愛談系統效能瓶頸跟資源估算,大多數情況面試官會想挖某幾個元件的細節。",
+        "時間管理很重要,很容易一頭栽進不能證明你能力的枝微末節裡出不來。",
+        "舉例:設計短網址服務時,深入雜湊函式怎麼把長網址轉成短網址很有意思;設計聊天系統時,怎麼降低延遲、怎麼處理上線/離線狀態是值得深挖的主題。"
+      ],
+      extra: `<p style="font-size:13.5px; color:#8fb2cc;">避免陷阱:花太多時間鉅細靡遺地講 Facebook 動態消息排序演算法(EdgeRank)的細節並不理想 — 這會吃掉寶貴時間,而且無法證明你設計可擴展系統的能力。</p>`
+    },
+    4: {
+      title: "總結收尾",
+      range: "3–5 分鐘",
+      bullets: [
+        "面試官可能會問幾個後續問題,或讓你自由發揮補充。",
+        "主動指出系統瓶頸,討論可能的改進方向 — 千萬別說「我的設計很完美,沒什麼好改的」,永遠有可以優化的地方,這是展現批判性思考、留下好印象的機會。",
+        "幫面試官快速回顧一次你的設計,尤其如果你提過好幾種方案,長時間討論後幫她複習很有幫助。",
+        "可以聊聊錯誤情境(伺服器故障、網路中斷等)。",
+        "營運面的議題也值得一提:怎麼監控指標跟錯誤日誌?怎麼上線部署?",
+        "「下一個規模台階」是有趣的話題:如果現在的設計撐 100 萬使用者,要撐到 1000 萬需要改哪裡?",
+        "如果還有時間,可以主動提出你會做的其他優化。"
+      ],
+      extra: ""
+    }
+  };
+
+  const timeline = document.getElementById('timeline');
+  const segs = timeline.querySelectorAll('.tl-seg');
+
+  function render(step){
+    const data = steps[step];
+    document.getElementById('stepNumBadge').textContent = step;
+    document.getElementById('stepTitle').textContent = data.title;
+    document.getElementById('stepRange').textContent = data.range;
+    document.getElementById('stepBullets').innerHTML = data.bullets.map(b => "<li>"+b+"</li>").join("");
+    document.getElementById('stepExtra').innerHTML = data.extra || "";
+    segs.forEach(s => s.classList.toggle('active', s.dataset.step === String(step)));
+  }
+
+  segs.forEach(seg => {
+    seg.addEventListener('click', () => render(parseInt(seg.dataset.step, 10)));
+  });
+
+  render(1);
+})();
+</script>
+
+</body>
+</html>

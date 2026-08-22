@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第四章筆記｜設計限流器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#081d30; --navy:#0c2b47; --panel:#0f3358;
+    --grid-line: rgba(146,203,232,0.09);
+    --cyan:#5fd4e0; --cyan-dim: rgba(95,212,224,0.35);
+    --amber:#f2a93b; --red:#e8607a;
+    --text-main:#eaf6fb; --text-dim:#8fb2cc; --line: rgba(234,246,251,0.16);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--navy-deep);
+    background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--text-main); font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  a{color:var(--cyan);}
+  .titleblock{ max-width:1100px; margin:0 auto; padding:64px 28px 40px; border-bottom:1px solid var(--line); }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; letter-spacing:.25em; font-size:12px; color:var(--cyan); text-transform:uppercase; }
+  h1.doctitle{ font-size:clamp(28px,5vw,52px); margin:10px 0 6px; font-weight:900; letter-spacing:-0.01em; }
+  .subtitle{color:var(--text-dim); font-size:17px; max-width:640px;}
+  .stampgrid{ margin-top:32px; display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); }
+  .stampgrid div{ padding:10px 14px; border-right:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-dim); }
+  .stampgrid div:last-child{border-right:none;}
+  .stampgrid b{display:block; color:var(--text-main); font-size:13px; margin-top:3px;}
+  @media(max-width:700px){ .stampgrid{grid-template-columns:repeat(2,1fr);} }
+  .toc{ max-width:1100px; margin:0 auto; padding:18px 28px; display:flex; flex-wrap:wrap; gap:6px 18px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:rgba(8,29,48,0.92); backdrop-filter:blur(6px); z-index:50; }
+  .toc a{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--text-dim); text-decoration:none; padding:5px 0; border-bottom:1px solid transparent; }
+  .toc a:hover{color:var(--cyan); border-color:var(--cyan-dim);}
+  main{max-width:1100px; margin:0 auto; padding:20px 28px 100px;}
+  .sheet{ margin-top:56px; border:1px solid var(--line); background:linear-gradient(180deg, rgba(15,51,88,0.35), rgba(15,51,88,0.08)); padding:30px clamp(16px,4vw,40px) 36px; position:relative; }
+  .sheetno{ position:absolute; top:-13px; left:24px; background:var(--navy-deep); padding:0 10px; font-family:'IBM Plex Mono', monospace; color:var(--amber); font-size:12px; letter-spacing:.15em; }
+  h2.sec{ font-size:clamp(20px,3vw,28px); margin:6px 0 4px; font-weight:700; }
+  .sec-sub{color:var(--text-dim); font-size:14px; margin-bottom:22px;}
+  p{margin:0 0 12px; color:#d7e8f2;}
+  ul.notes{margin:0 0 14px; padding-left:20px; color:#d7e8f2;}
+  ul.notes li{margin-bottom:7px;}
+  .tag{ display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--cyan); border:1px solid var(--cyan-dim); padding:2px 8px; border-radius:2px; margin:2px 6px 2px 0; }
+  .warn{color:var(--amber);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media(max-width:760px){ .grid2{grid-template-columns:1fr;} }
+  .flow{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:20px 6px; justify-content:center; }
+  .box{ border:1px solid var(--cyan-dim); background:rgba(95,212,224,0.05); padding:12px 16px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; text-align:center; min-width:100px; color:var(--text-main); }
+  .box.amber{border-color:rgba(242,169,59,0.55); background:rgba(242,169,59,0.06); color:var(--amber);}
+  .arrow{color:var(--text-dim); font-size:18px;}
+
+  table{border-collapse:collapse; width:100%; margin:10px 0 18px; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--cyan); letter-spacing:.05em; background:rgba(95,212,224,0.06);}
+  code{ font-family:'IBM Plex Mono',monospace; background:rgba(255,255,255,0.06); padding:1px 5px; font-size:12.5px; color:var(--amber); }
+
+  /* simulator */
+  .lab{ border:1px solid var(--line); background:var(--navy); }
+  .lab-top{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 20px 0; }
+  .lab-top .mono{font-size:11px; color:var(--text-dim); letter-spacing:.1em;}
+  .algo-tabs{ display:flex; gap:0; margin:16px 20px 0; border:1px solid var(--line); }
+  .algo-tab{ flex:1; text-align:center; padding:10px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--text-dim); border-right:1px solid var(--line); }
+  .algo-tab:last-child{border-right:none;}
+  .algo-tab.active{ background:rgba(242,169,59,0.14); color:var(--amber); }
+  .sim-body{ padding:20px 24px 26px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  @media(max-width:800px){ .sim-body{grid-template-columns:1fr;} }
+  .sim-controls .field{ margin-bottom:16px; }
+  .sim-controls label{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .sim-controls label span.val{ color:var(--cyan); font-weight:600; }
+  input[type=range]{ width:100%; -webkit-appearance:none; height:3px; background:var(--line); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 4px rgba(95,212,224,0.18); cursor:pointer; }
+  .simbtn{ font-family:'IBM Plex Mono',monospace; background:rgba(95,212,224,0.08); border:1px solid var(--cyan-dim); color:var(--cyan); padding:9px 14px; cursor:pointer; font-size:12.5px; margin-right:8px; margin-top:4px; }
+  .simbtn:hover{ background:rgba(95,212,224,0.18); }
+  .simbtn.amber{ border-color:rgba(242,169,59,0.5); color:var(--amber); background:rgba(242,169,59,0.08); }
+  .gauge-wrap{ margin-top:8px; }
+  .gauge-label{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim); margin-bottom:6px; }
+  .gauge-track{ height:22px; background:rgba(255,255,255,0.04); border:1px solid var(--line); position:relative; overflow:hidden; }
+  .gauge-fill{ height:100%; background:linear-gradient(90deg, var(--cyan), var(--amber)); transition:width .25s ease; }
+  .window-countdown{ height:6px; background:rgba(255,255,255,0.06); margin-top:10px; overflow:hidden; }
+  .window-countdown-fill{ height:100%; background:var(--amber); transition:width .1s linear; }
+  .sim-log{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; max-height:220px; overflow-y:auto; border:1px solid var(--line); padding:10px 12px; background:rgba(0,0,0,0.15); }
+  .sim-log .entry{ padding:3px 0; display:flex; justify-content:space-between; border-bottom:1px dashed rgba(255,255,255,0.06); }
+  .sim-log .allow{ color:var(--cyan); }
+  .sim-log .deny{ color:var(--red); }
+  .sim-note{ font-size:12px; color:var(--text-dim); margin-top:10px; }
+
+  .case{ border:1px solid var(--line); background:rgba(15,51,88,0.18); margin-bottom:14px; }
+  .case summary{ cursor:pointer; list-style:none; padding:16px 20px; display:flex; align-items:center; gap:14px; justify-content:space-between; }
+  .case summary::-webkit-details-marker{display:none;}
+  .case-head{display:flex; align-items:center; gap:14px;}
+  .case-mark{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--navy-deep); background:var(--cyan); padding:3px 8px; flex-shrink:0; }
+  .case-name{font-weight:700; font-size:16px;}
+  .case-hint{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);}
+  .case-plus{ font-family:'IBM Plex Mono',monospace; font-size:18px; color:var(--cyan); transition:transform .25s ease; flex-shrink:0; }
+  .case[open] .case-plus{ transform:rotate(45deg); }
+  .case-body{ padding:2px 20px 22px; border-top:1px solid var(--line); }
+  .case-body p{font-size:14px;}
+  .case-tag{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--amber); border:1px solid rgba(242,169,59,0.4); padding:1px 7px; margin-right:6px; }
+
+  footer{ text-align:center; padding:40px 20px 60px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line); }
+  .checklist{list-style:none; padding:0; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:10px 24px;}
+  @media(max-width:700px){.checklist{grid-template-columns:1fr;}}
+  .checklist li{ font-size:14.5px; color:#d7e8f2; padding-left:26px; position:relative; }
+  .checklist li::before{ content:"□"; position:absolute; left:0; top:0; color:var(--cyan); font-size:16px; }
+</style>
+</head>
+<body>
+
+<div class="titleblock">
+  <div class="eyebrow">System Design Interview — An Insider's Guide</div>
+  <h1 class="doctitle">第四章：設計限流器</h1>
+  <p class="subtitle">Design a Rate Limiter — 控制一段時間內,一個客戶端或服務可以送出多少請求,超過門檻的請求一律擋下來。</p>
+  <div class="stampgrid mono">
+    <div>原文作者<b>Alex Xu</b></div>
+    <div>圖表<b>本頁重繪 / 互動式</b></div>
+    <div>章節<b>CH.04 / 16</b></div>
+    <div>筆記語言<b>繁體中文</b></div>
+  </div>
+</div>
+
+<nav class="toc">
+  <a href="index.html" style="color:#f2a93b;">← 目錄</a>
+  <a href="chapter3_framework_notes.html">← 第三章</a>
+  <a href="#s-intro">01 為什麼需要限流器</a>
+  <a href="#lab">02 演算法試驗場</a>
+  <a href="#s-compare">03 五種演算法總表</a>
+  <a href="#s-arch">04 架構與分散式挑戰</a>
+  <a href="#s-detail">05 規則與回應標頭</a>
+  <a href="#s-cases">06 業界真實案例</a>
+  <a href="#s-sum">07 總結</a>
+</nav>
+
+<main>
+
+  <!-- ================= intro ================= -->
+  <section class="sheet" id="s-intro">
+    <div class="sheetno">SHEET 01</div>
+    <h2 class="sec">為什麼需要限流器？放在哪裡？</h2>
+    <p class="sec-sub">限流器(Rate Limiter)限制一段時間內允許送出的請求數量,超過門檻的請求全部擋掉。例如:同一 IP 一天最多開 10 個帳號;同一裝置一週最多領 5 次獎勵。</p>
+    <p><b>三個好處：</b></p>
+    <ul class="notes">
+      <li><b>防止資源耗盡 / DoS 攻擊：</b>大公司的 API 幾乎都有限流,例如 Twitter 限制每 3 小時最多 300 則推文,Google Docs API 預設每位使用者每 60 秒最多 300 次讀取請求。</li>
+      <li><b>降低成本：</b>擋掉多餘請求代表少用一點伺服器資源;如果你的系統要付費呼叫第三方 API(查信用、扣款、調病歷),限流是控制成本的關鍵。</li>
+      <li><b>避免伺服器過載：</b>擋掉機器人或異常行為造成的過量請求,減輕伺服器負擔。</li>
+    </ul>
+    <p><b>限流器該放在哪？</b></p>
+    <div class="flow">
+      <div class="box amber">客戶端<br><span style="font-size:10px;">不建議:容易被偽造</span></div>
+      <span class="arrow">vs</span>
+      <div class="box">伺服器端<br><span style="font-size:10px;">API Server 內建</span></div>
+      <span class="arrow">vs</span>
+      <div class="box">中介層 / API Gateway<br><span style="font-size:10px;">最常見的實務做法</span></div>
+    </div>
+    <p style="font-size:13.5px;">客戶端請求很容易被偽造,不是可靠的執行點。伺服器端限流讓你完全掌控演算法,但如果已經在用 API Gateway(統一做認證、SSL、IP 白名單等),把限流也放進去通常更省事;要不要自己蓋一套,取決於你的技術棧和工程資源。</p>
+  </section>
+
+  <!-- ================= SIMULATOR ================= -->
+  <section class="sheet" id="lab">
+    <div class="sheetno">SHEET 02 — 演算法試驗場</div>
+    <h2 class="sec">同樣是限流,行為差很多</h2>
+    <p class="sec-sub">切換分頁,自己送請求試試看兩種最具代表性的演算法怎麼決定「放行」還是「擋下」。</p>
+
+    <div class="lab">
+      <div class="lab-top">
+        <span class="mono">FIG. 4-LAB — LIVE SIMULATOR</span>
+      </div>
+      <div class="algo-tabs">
+        <div class="algo-tab active" data-algo="token">權杖桶 Token Bucket</div>
+        <div class="algo-tab" data-algo="fixed">固定窗口計數器 Fixed Window</div>
+      </div>
+
+      <!-- token bucket panel -->
+      <div class="sim-body" id="panel-token">
+        <div class="sim-controls">
+          <div class="field">
+            <label>桶子容量 <span class="val" id="v-cap">4</span> 個權杖</label>
+            <input type="range" id="tb-cap" min="2" max="10" step="1" value="4">
+          </div>
+          <div class="field">
+            <label>補充速率 <span class="val" id="v-rate">2</span> 個/秒</label>
+            <input type="range" id="tb-rate" min="1" max="5" step="1" value="2">
+          </div>
+          <button class="simbtn" id="tb-send">送出 1 個請求</button>
+          <button class="simbtn amber" id="tb-burst">瞬間送出 6 個請求</button>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>桶內剩餘權杖</span><span id="tb-gauge-text">4.0 / 4</span></div>
+            <div class="gauge-track"><div class="gauge-fill" id="tb-gauge-fill" style="width:100%;"></div></div>
+          </div>
+          <p class="sim-note">每個請求要消耗 1 個權杖;桶子空了就擋掉。只要平常有累積權杖,就能「短暫爆發」— 這是 Amazon 和 Stripe 都採用這個演算法的原因。</p>
+        </div>
+        <div class="sim-log" id="tb-log"></div>
+      </div>
+
+      <!-- fixed window panel -->
+      <div class="sim-body" id="panel-fixed" style="display:none;">
+        <div class="sim-controls">
+          <div class="field">
+            <label>每個窗口最多 <span class="val" id="v-limit">3</span> 個請求</label>
+            <input type="range" id="fw-limit" min="2" max="6" step="1" value="3">
+          </div>
+          <p class="sim-note" style="margin-top:0;">為了讓你幾秒內就能看到效果,這裡把窗口壓縮成 <b>5 秒</b>,原理跟書中「每分鐘」的例子完全一樣。</p>
+          <button class="simbtn" id="fw-send">送出 1 個請求</button>
+          <button class="simbtn amber" id="fw-burst">模擬邊界突發(書中 Fig.4-9)</button>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>本窗口計數</span><span id="fw-gauge-text">0 / 3</span></div>
+            <div class="gauge-track"><div class="gauge-fill" id="fw-gauge-fill" style="width:0%;"></div></div>
+            <div class="window-countdown"><div class="window-countdown-fill" id="fw-countdown" style="width:100%;"></div></div>
+          </div>
+          <p class="sim-note">「模擬邊界突發」會在目前窗口快結束前塞滿請求,窗口一重置馬上又塞滿一次 — 你會看到短短一瞬間通過的請求數,遠超過設定的上限。</p>
+        </div>
+        <div class="sim-log" id="fw-log"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= comparison table ================= -->
+  <section class="sheet" id="s-compare">
+    <div class="sheetno">SHEET 03</div>
+    <h2 class="sec">五種演算法總表</h2>
+    <table>
+      <tr><th>演算法</th><th>怎麼運作</th><th>優點</th><th>缺點</th><th>實務案例</th></tr>
+      <tr>
+        <td><b>權杖桶<br>Token Bucket</b></td>
+        <td>桶子定期補權杖,每個請求消耗 1 個,沒權杖就擋</td>
+        <td>好實作、省記憶體、允許短暫爆發流量</td>
+        <td>兩個參數(容量/補充速率)不好調</td>
+        <td>Amazon、Stripe</td>
+      </tr>
+      <tr>
+        <td><b>漏桶<br>Leaking Bucket</b></td>
+        <td>請求進 FIFO 佇列,固定速率取出處理,滿了就丟棄</td>
+        <td>省記憶體、輸出速率穩定</td>
+        <td>突發流量會塞滿舊請求,拖累新請求;參數不好調</td>
+        <td>Shopify</td>
+      </tr>
+      <tr>
+        <td><b>固定窗口計數器<br>Fixed Window</b></td>
+        <td>時間切成固定窗口,每窗口一個計數器,滿了就擋</td>
+        <td>省記憶體、好理解、窗口重置符合直覺</td>
+        <td class="warn">窗口交界處會放行超過上限 2 倍的請求</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td><b>滑動窗口日誌<br>Sliding Window Log</b></td>
+        <td>記錄每個請求的時間戳,即時算出窗口內的請求數</td>
+        <td>非常精準,任何一段滾動窗口都不會超額</td>
+        <td class="warn">記憶體開銷大,連被拒絕的請求也要存</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td><b>滑動窗口計數器<br>Sliding Window Counter</b></td>
+        <td>結合固定窗口與滑動窗口日誌,用比例加權估算</td>
+        <td>平滑處理流量尖峰、省記憶體</td>
+        <td>只是近似值,假設請求在窗口內平均分佈</td>
+        <td>Cloudflare</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- ================= architecture ================= -->
+  <section class="sheet" id="s-arch">
+    <div class="sheetno">SHEET 04</div>
+    <h2 class="sec">高層架構與分散式環境的兩個難題</h2>
+    <p><b>基本架構：</b>用記憶體快取(不用資料庫,磁碟太慢)存計數器,Redis 是常見選擇,搭配兩個指令:<code>INCR</code>(計數器 +1)跟 <code>EXPIRE</code>(設定逾時,時間到自動清除計數器)。中介層先向 Redis 查計數器,沒超標才放行到 API 伺服器,同時把計數器 +1 寫回去。</p>
+    <div class="grid2">
+      <div>
+        <p><b class="mono" style="color:#f2a93b;">難題一:競態條件 Race Condition</b></p>
+        <p style="font-size:13.5px;">高併發下,兩個請求同時讀到計數器是 3,各自 +1 後都寫回 4 — 正確答案應該是 5。常見解法是用 <span class="tag">Lua Script</span> 或 Redis 的 <span class="tag">Sorted Set</span> 資料結構把「讀取+判斷+寫入」變成一個原子操作,避免用鎖(鎖會拖慢系統)。</p>
+      </div>
+      <div>
+        <p><b class="mono" style="color:#f2a93b;">難題二:多台限流伺服器的同步</b></p>
+        <p style="font-size:13.5px;">Web 層是無狀態的,同一個客戶端的請求可能被導到不同台限流伺服器,若各自維護計數器就會各算各的。用「黏性連線」硬綁客戶端到同一台不夠靈活也不好擴展;更好的做法是全部限流伺服器共用同一個集中式資料存放區(如 Redis)。</p>
+      </div>
+    </div>
+    <p><b>效能優化：</b>跨區使用者延遲高,建議像 Cloudflare 那樣在全球佈署多個邊緣節點(截至書中寫作時 Cloudflare 有 194 個),就近處理限流判斷;多節點間的資料同步則採用最終一致性模型換取效能。</p>
+  </section>
+
+  <!-- ================= rules & headers ================= -->
+  <section class="sheet" id="s-detail">
+    <div class="sheetno">SHEET 05</div>
+    <h2 class="sec">限流規則、回應碼與標頭</h2>
+    <p><b>規則怎麼定義：</b>Lyft 開源了他們的限流元件,規則寫成設定檔存在磁碟上,例如「行銷訊息類別,每天最多 5 則」或「登入類別,每分鐘最多 5 次」,由背景程式定期把規則從磁碟載入快取。</p>
+    <p><b>被擋下來會怎樣：</b>回傳 HTTP <code>429 Too Many Requests</code>。依情境不同,有時會把被擋的請求放進佇列稍後處理(例如系統過載時暫緩訂單,而不是直接丟棄)。</p>
+    <p><b>客戶端怎麼知道自己被限流：</b>靠回應標頭:</p>
+    <table>
+      <tr><th>標頭</th><th>意思</th></tr>
+      <tr><td><code>X-Ratelimit-Remaining</code></td><td>這個窗口內還剩幾次可用</td></tr>
+      <tr><td><code>X-Ratelimit-Limit</code></td><td>這個窗口總共允許幾次</td></tr>
+      <tr><td><code>X-Ratelimit-Retry-After</code></td><td>要等幾秒才能再送請求</td></tr>
+    </table>
+  </section>
+
+  <!-- ================= cases ================= -->
+  <section class="sheet" id="s-cases">
+    <div class="sheetno">SHEET 06 — 課外補充</div>
+    <h2 class="sec">業界真實案例：這些演算法怎麼被真的用</h2>
+    <p class="sec-sub">三個案例都來自書中引用的第一手公開資料,點開看細節就好,不看也不影響你理解本章。</p>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 01</span>
+          <div>
+            <div class="case-name">Stripe 公開部落格:如何在多台機器間跑同一個權杖桶</div>
+            <div class="case-hint">對照 SHEET 02．權杖桶模擬器</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">真實做法</span>付款平台 Stripe 在自家工程部落格公開過他們限流器的設計思路:因為 API 請求會分散打到很多台伺服器,如果每台伺服器各自維護一個獨立的權杖桶,同一個客戶的真實請求量就會被低估(每台桶都以為自己是唯一的桶)。Stripe 因此把權杖桶的狀態集中放進共用的記憶體儲存,讓所有伺服器看到的是同一個桶子。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:這正好呼應本章「分散式環境的同步難題」— 光懂演算法本身不夠,權杖桶、固定窗口這些邏輯一旦要跨多台伺服器運作,「狀態放在哪裡」才是真正的工程難題。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 02</span>
+          <div>
+            <div class="case-name">Cloudflare:4 億次請求裡,滑動窗口計數器的誤差只有 0.003%</div>
+            <div class="case-hint">對照 SHEET 03．演算法總表</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">真實數字</span>Cloudflare 在自家工程部落格公開過一次實驗:他們用滑動窗口計數器演算法(假設請求在窗口內平均分佈的近似演算法)處理了約 4 億筆請求,結果只有 <b>0.003%</b> 的請求被錯誤地放行或錯誤地擋下。</p>
+        <p><span class="case-tag">為什麼重要</span>滑動窗口計數器理論上是「近似值」,不像滑動窗口日誌那樣 100% 精準。但 Cloudflare 的真實數據證明,在他們的真實流量規模下,這個近似的誤差小到可以忽略 — 换来的是省下大量記憶體與運算成本,是一個「用可接受的精準度換取效能」的典型工程取捨案例。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:面試被問「這個演算法只是近似值,能接受嗎?」時,Cloudflare 這組真實數字是很有說服力的參考點。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 03</span>
+          <div>
+            <div class="case-name">Shopify 為什麼選漏桶,而不是允許爆發的權杖桶</div>
+            <div class="case-hint">對照 SHEET 03．演算法總表</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">真實做法</span>電商平台 Shopify 的 REST Admin API 採用漏桶演算法做限流,官方文件公開說明了具體的桶子容量與固定流出速率。</p>
+        <p><span class="case-tag">為什麼是漏桶,不是權杖桶</span>權杖桶允許「短暫爆發」— 只要桶子裡還有累積的權杖,瞬間衝一波請求也能全部通過。但電商後台系統(例如商品同步、訂單處理)通常更在意「下游處理速度穩不穩定」,不希望瞬間湧入一大波請求打爆後端資料庫。漏桶用固定輸出速率處理請求,不管前面湧入多猛,後面吐出去的速度永遠是穩定的 — 這正好符合電商場景「寧可穩定、不要爆發」的需求。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:選演算法不是背答案,是看場景 — 社群平台按讚可以允許爆發用權杖桶,電商後台寫入資料庫可能更適合漏桶的穩定輸出。</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= summary ================= -->
+  <section class="sheet" id="s-sum">
+    <div class="sheetno">SHEET 07 — 最終蓋章</div>
+    <h2 class="sec">本章重點回顧</h2>
+    <p class="sec-sub">額外可以聊的延伸話題:硬性限流(超過門檻絕對擋下) vs 軟性限流(允許短暫超過門檻);限流也可以做在網路層(IP,Layer 3)而不只是應用層(HTTP,Layer 7);客戶端最佳實務是善用快取、瞭解限制、加上重試的退避時間。</p>
+    <ul class="checklist">
+      <li>限流器放中介層 / API Gateway 最實務</li>
+      <li>權杖桶允許爆發,漏桶輸出速率穩定</li>
+      <li>固定窗口簡單但有邊界突發問題</li>
+      <li>滑動窗口日誌精準但耗記憶體</li>
+      <li>滑動窗口計數器是精準度與效能的折衷</li>
+      <li>計數器放 Redis,善用 INCR / EXPIRE</li>
+      <li>用 Lua Script 或 Sorted Set 解決競態條件</li>
+      <li>多台限流伺服器要共用集中式資料存放區</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  筆記整理自 Alex Xu, <i>System Design Interview: An Insider's Guide</i> — 第四章「Design a Rate Limiter」。<br>
+  圖表為重新繪製之互動版本,非原書掃描圖片。
+</footer>
+
+<script>
+(function(){
+  // ---- tab switching ----
+  const tabs = document.querySelectorAll('.algo-tab');
+  const panels = { token: document.getElementById('panel-token'), fixed: document.getElementById('panel-fixed') };
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    Object.values(panels).forEach(p => p.style.display = 'none');
+    panels[t.dataset.algo].style.display = 'grid';
+  }));
+
+  function logEntry(container, text, allowed){
+    const div = document.createElement('div');
+    div.className = 'entry';
+    const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+    div.innerHTML = '<span>'+time+' · '+text+'</span><span class="'+(allowed?'allow':'deny')+'">'+(allowed?'✓ 放行':'✕ 擋下')+'</span>';
+    container.prepend(div);
+    while(container.children.length > 14) container.removeChild(container.lastChild);
+  }
+
+  // ---- Token bucket ----
+  const tbCapEl = document.getElementById('tb-cap');
+  const tbRateEl = document.getElementById('tb-rate');
+  const tbLog = document.getElementById('tb-log');
+  let tbCapacity = parseFloat(tbCapEl.value);
+  let tbRate = parseFloat(tbRateEl.value);
+  let tbTokens = tbCapacity;
+  let tbLast = Date.now();
+
+  function tbRefill(){
+    const now = Date.now();
+    const elapsed = (now - tbLast) / 1000;
+    tbTokens = Math.min(tbCapacity, tbTokens + elapsed * tbRate);
+    tbLast = now;
+  }
+  function tbRender(){
+    document.getElementById('v-cap').textContent = tbCapacity;
+    document.getElementById('v-rate').textContent = tbRate;
+    document.getElementById('tb-gauge-text').textContent = tbTokens.toFixed(1) + ' / ' + tbCapacity;
+    document.getElementById('tb-gauge-fill').style.width = (tbTokens / tbCapacity * 100) + '%';
+  }
+  function tbRequest(){
+    tbRefill();
+    if(tbTokens >= 1){
+      tbTokens -= 1;
+      logEntry(tbLog, '請求消耗 1 個權杖', true);
+    } else {
+      logEntry(tbLog, '桶內沒有權杖了', false);
+    }
+    tbRender();
+  }
+  tbCapEl.addEventListener('input', () => { tbCapacity = parseFloat(tbCapEl.value); tbTokens = Math.min(tbTokens, tbCapacity); tbRender(); });
+  tbRateEl.addEventListener('input', () => { tbRate = parseFloat(tbRateEl.value); tbRender(); });
+  document.getElementById('tb-send').addEventListener('click', tbRequest);
+  document.getElementById('tb-burst').addEventListener('click', () => { for(let i=0;i<6;i++) tbRequest(); });
+  setInterval(() => { tbRefill(); tbRender(); }, 300);
+  tbRender();
+
+  // ---- Fixed window counter ----
+  const fwLimitEl = document.getElementById('fw-limit');
+  const fwLog = document.getElementById('fw-log');
+  const WINDOW_MS = 5000;
+  let fwLimit = parseInt(fwLimitEl.value, 10);
+  let fwWindowIndex = Math.floor(Date.now() / WINDOW_MS);
+  let fwCount = 0;
+
+  function fwCheckWindow(){
+    const idx = Math.floor(Date.now() / WINDOW_MS);
+    if(idx !== fwWindowIndex){ fwWindowIndex = idx; fwCount = 0; }
+  }
+  function fwRender(){
+    document.getElementById('v-limit').textContent = fwLimit;
+    document.getElementById('fw-gauge-text').textContent = fwCount + ' / ' + fwLimit;
+    document.getElementById('fw-gauge-fill').style.width = Math.min(100, fwCount / fwLimit * 100) + '%';
+    const now = Date.now();
+    const into = now - fwWindowIndex * WINDOW_MS;
+    const remainPct = 100 - (into / WINDOW_MS * 100);
+    document.getElementById('fw-countdown').style.width = Math.max(0, remainPct) + '%';
+  }
+  function fwRequest(){
+    fwCheckWindow();
+    if(fwCount < fwLimit){
+      fwCount += 1;
+      logEntry(fwLog, '本窗口第 ' + fwCount + ' 個請求', true);
+    } else {
+      logEntry(fwLog, '本窗口已達上限 ' + fwLimit, false);
+    }
+    fwRender();
+  }
+  fwLimitEl.addEventListener('input', () => { fwLimit = parseInt(fwLimitEl.value, 10); fwRender(); });
+  document.getElementById('fw-send').addEventListener('click', fwRequest);
+  document.getElementById('fw-burst').addEventListener('click', () => {
+    // fire up to limit immediately
+    for(let i=0;i<fwLimit;i++) fwRequest();
+    // schedule a burst right at the next window boundary
+    const now = Date.now();
+    const msToNextWindow = WINDOW_MS - (now - fwWindowIndex * WINDOW_MS) + 50;
+    setTimeout(() => { for(let i=0;i<fwLimit;i++) fwRequest(); }, msToNextWindow);
+  });
+  setInterval(fwRender, 100);
+  fwRender();
+})();
+</script>
+
+</body>
+</html>

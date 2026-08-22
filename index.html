@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Interview — 中文互動筆記目錄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#081d30; --cyan:#5fd4e0; --cyan-dim: rgba(95,212,224,0.35);
+    --amber:#f2a93b; --text-main:#eaf6fb; --text-dim:#8fb2cc; --line: rgba(234,246,251,0.16);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--navy-deep);
+    background-image: linear-gradient(rgba(146,203,232,0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(146,203,232,0.09) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--text-main); font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  main{max-width:800px; margin:0 auto; padding:64px 28px 100px;}
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; letter-spacing:.25em; font-size:12px; color:var(--cyan); text-transform:uppercase; }
+  h1{ font-size:clamp(26px,5vw,42px); margin:10px 0 6px; font-weight:900; letter-spacing:-0.01em; }
+  .subtitle{color:var(--text-dim); font-size:15.5px; max-width:560px; margin-bottom:44px;}
+  .list{ border-top:1px solid var(--line); }
+  .row{
+    display:flex; align-items:center; gap:18px;
+    padding:16px 4px; border-bottom:1px solid var(--line);
+    text-decoration:none; color:var(--text-main);
+  }
+  a.row:hover{ background:rgba(95,212,224,0.05); }
+  .row.disabled{ color:var(--text-dim); cursor:default; }
+  .num{ font-family:'IBM Plex Mono',monospace; color:var(--cyan-dim); font-size:14px; width:28px; flex-shrink:0; }
+  .row.disabled .num{ color:var(--text-dim); }
+  .title{ flex:1; font-size:15.5px; }
+  .status{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px;
+    padding:3px 9px; border:1px solid var(--cyan-dim); color:var(--cyan); flex-shrink:0;
+  }
+  .status.pending{ border-color:var(--line); color:var(--text-dim); }
+  footer{ margin-top:50px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">System Design Interview — An Insider's Guide</div>
+  <h1>中文互動筆記目錄</h1>
+  <p class="subtitle">Alex Xu 著．每章一份獨立的互動式筆記,點進去看藍圖式圖解、可調參數的試算器,以及業界真實案例補充。</p>
+
+  <div class="list">
+    <a class="row" href="chapter1_blueprint_notes.html"><span class="num">01</span><span class="title">從零到百萬使用者規模</span><span class="status">已完成</span></a>
+    <a class="row" href="chapter2_estimation_notes.html"><span class="num">02</span><span class="title">概略估算</span><span class="status">已完成</span></a>
+    <a class="row" href="chapter3_framework_notes.html"><span class="num">03</span><span class="title">系統設計面試框架</span><span class="status">已完成</span></a>
+    <a class="row" href="chapter4_ratelimiter_notes.html"><span class="num">04</span><span class="title">設計限流器</span><span class="status">已完成</span></a>
+    <div class="row disabled"><span class="num">05</span><span class="title">設計一致性雜湊</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">06</span><span class="title">設計鍵值儲存系統</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">07</span><span class="title">設計分散式唯一 ID 產生器</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">08</span><span class="title">設計短網址服務</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">09</span><span class="title">設計網路爬蟲</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">10</span><span class="title">設計通知系統</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">11</span><span class="title">設計動態消息系統</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">12</span><span class="title">設計聊天系統</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">13</span><span class="title">設計搜尋自動完成系統</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">14</span><span class="title">設計 YouTube</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">15</span><span class="title">設計 Google Drive</span><span class="status pending">尚未製作</span></div>
+    <div class="row disabled"><span class="num">16</span><span class="title">持續學習</span><span class="status pending">尚未製作</span></div>
+  </div>
+
+  <footer>之後每完成一章,只要把對應那一行改成 &lt;a class="row" href="chapterN_xxx.html"&gt;…&lt;/a&gt; 並把狀態改成「已完成」即可。</footer>
+</main>
+</body>
+</html>
