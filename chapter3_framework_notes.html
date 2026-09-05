@@ -57,6 +57,34 @@
   .dialogue p:last-child{border-bottom:none;}
   .dialogue b{color:var(--cyan); font-family:'IBM Plex Mono',monospace; font-size:11.5px;}
 
+  .flow{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:18px 4px; justify-content:center; }
+  .box{ border:1px solid var(--cyan-dim); background:rgba(95,212,224,0.05); padding:11px 15px; font-family:'IBM Plex Mono',monospace; font-size:12px; text-align:center; min-width:96px; color:var(--text-main); line-height:1.5; }
+  .box.amber{border-color:rgba(242,169,59,0.55); background:rgba(242,169,59,0.06); color:var(--amber);}
+  .arrow{color:var(--text-dim); font-size:15px; font-family:'IBM Plex Mono',monospace;}
+  .stack{display:flex; flex-direction:column; gap:6px; align-items:center;}
+  .fig-caption{ font-size:12px; color:var(--text-dim); text-align:center; margin:-8px 0 14px; font-family:'IBM Plex Mono',monospace; }
+  .col3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; padding:6px 0 18px; }
+  @media(max-width:700px){ .col3{grid-template-columns:1fr;} }
+
+  /* fanout stepper diagram */
+  .fanout-wrap{ border:1px solid var(--line); background:var(--navy); margin:12px 0 18px; }
+  .fanout-svg-wrap{ padding:16px 10px 0; }
+  #fanoutSvg{ width:100%; height:auto; display:block; }
+  .fn-box{ fill:rgba(95,212,224,0.05); stroke:var(--cyan-dim); stroke-width:1.3; transition:all .3s ease; }
+  .fn-box.active{ fill:rgba(242,169,59,0.14); stroke:var(--amber); stroke-width:1.8; }
+  .fn-label{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; fill:var(--text-main); text-anchor:middle; }
+  .fn-sub{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; fill:var(--text-dim); text-anchor:middle; }
+  .fn-arrow{ stroke:var(--line); stroke-width:1.3; fill:none; opacity:.35; transition:all .3s ease; }
+  .fn-arrow.active{ stroke:var(--amber); stroke-width:2; opacity:1; }
+  .fn-num{ font-family:'IBM Plex Mono',monospace; font-size:12px; fill:var(--text-dim); transition:fill .3s ease; }
+  .fn-num.active{ fill:var(--navy-deep); }
+  .fn-numbg{ fill:rgba(255,255,255,0.06); stroke:var(--line); stroke-width:1; transition:fill .3s ease; }
+  .fn-numbg.active{ fill:var(--amber); stroke:var(--amber); }
+  .fn-controls{ display:flex; align-items:center; gap:14px; padding:16px 20px 0; }
+  .fn-panel{ padding:14px 24px 22px; }
+  .fn-step-title{ font-size:15px; font-weight:700; margin:0 0 6px; color:var(--amber); }
+  .fn-step-text{ font-size:13.5px; color:#d7e8f2; margin:0; }
+
   /* timeline */
   .lab{ border:1px solid var(--line); background:var(--navy); }
   .lab-top{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 20px 0; }
@@ -330,13 +358,29 @@
         "常見的釐清問題:要做哪些具體功能?使用者規模多大?預期多快要擴大規模(3個月/半年/一年)?公司現有技術棧是什麼?",
         "面試官如果沒有直接回答,而是要你自己做假設 — 記得把假設寫在白板上,之後會用到。"
       ],
-      extra: `<div class="dialogue">
+      extra: `
+      <p class="fig-caption">圖解 — 一個模糊題目,怎麼被問題「收斂」成明確範圍</p>
+      <div class="flow">
+        <div class="box amber">設計動態消息系統<br><span style="font-size:9.5px;">又大又模糊</span></div>
+        <span class="arrow">連問 6 個問題 →</span>
+        <div class="stack">
+          <div class="box" style="min-width:150px;">Web + App 都要做</div>
+          <div class="box" style="min-width:150px;">功能:發文＋看朋友動態</div>
+          <div class="box" style="min-width:150px;">排序:時間倒序</div>
+          <div class="box" style="min-width:150px;">好友上限 5,000 人</div>
+          <div class="box" style="min-width:150px;">DAU 1,000 萬</div>
+          <div class="box" style="min-width:150px;">支援圖片／影片</div>
+        </div>
+      </div>
+      <p style="font-size:13px; color:#8fb2cc; margin-top:-6px;">這六個問題,就是下面範例對話裡實際問出來的內容 — 問完之後,原本「設計動態消息系統」這句模糊的話,變成六條白紙黑字、可以拿去做設計的規格。這就是 Step 1 真正在做的事:不是想答案,是把題目「縮小」。</p>
+      <div class="dialogue">
         <p><b>範例對話(設計動態消息系統)</b></p>
         <p>你:「這是手機 App、網頁,還是兩者都要？」面試官:「兩者都要。」</p>
         <p>你:「最重要的功能是什麼？」面試官:「能發文、能看朋友的動態消息。」</p>
         <p>你:「消息是照時間倒序排列,還是有特定排序？」面試官:「先假設用時間倒序排列就好。」</p>
         <p>你:「一個使用者最多可以有幾個朋友？」面試官:「5000 個。」</p>
         <p>你:「流量大概多大？」面試官:「每日活躍使用者(DAU)1000 萬。」</p>
+        <p>你:「動態消息可以放圖片、影片嗎?」面試官:「可以,兩種都要支援。」</p>
       </div>`
     },
     2: {
@@ -349,7 +393,46 @@
         "如果可以,帶過幾個具體使用案例,這能幫你聚焦設計方向,也常常會發現一開始沒想到的邊界情況。",
         "要不要談到 API 端點、資料庫欄位設計?看題目大小 — 「設計 Google 搜尋引擎」談這個太細,「設計一個多人撲克遊戲後端」談這個很合理。跟面試官溝通確認。"
       ],
-      extra: `<p style="font-size:13.5px; color:#8fb2cc;">範例(設計動態消息系統):高層設計可以拆成兩條流程 — <b>發文流程</b>(使用者發文,資料寫入快取/資料庫,推送到朋友的動態消息)跟<b>動態消息組成流程</b>(把朋友們的貼文依時間倒序彙整起來)。這兩條流程的細節會在第十一章詳細展開。</p>`
+      extra: `
+      <p style="font-size:13.5px; color:#8fb2cc;">延續動態消息系統的例子,高層設計可以拆成兩條獨立的流程 — 書中的 <b>Figure 3-1(發文流程)</b> 跟 <b>Figure 3-2(動態消息組成流程)</b>。這兩張正是本章唯二真正出現的架構圖:</p>
+
+      <p class="fig-caption">圖 3-1 — 發文流程(Feed Publishing)</p>
+      <div class="flow">
+        <div class="box">使用者(Web/App)</div><span class="arrow">→</span>
+        <div class="box">負載平衡器</div><span class="arrow">→</span>
+        <div class="box amber">Web 伺服器</div>
+      </div>
+      <p style="font-size:11px; color:var(--text-dim); text-align:center; font-family:'IBM Plex Mono',monospace; margin:-8px 0 4px;">↓ 同時觸發下面三個服務 ↓</p>
+      <div class="col3">
+        <div class="stack">
+          <div class="box" style="min-width:150px;">Post Service</div>
+          <span class="arrow">↓</span>
+          <div class="box" style="min-width:150px; font-size:11px;">Post Cache</div>
+          <span class="arrow">↓</span>
+          <div class="box" style="min-width:150px; font-size:11px;">Post DB</div>
+        </div>
+        <div class="stack">
+          <div class="box" style="min-width:150px;">Fanout Service</div>
+          <span class="arrow">↓</span>
+          <div class="box" style="min-width:150px; font-size:11px;">News Feed Cache</div>
+        </div>
+        <div class="stack">
+          <div class="box" style="min-width:150px;">Notification Service</div>
+        </div>
+      </div>
+      <p style="font-size:13px; color:#8fb2cc; margin-top:-6px;"><b>怎麼讀這張圖:</b>使用者發文的請求先到 Web 伺服器,接著<b>同時</b>觸發三個獨立服務,彼此互不等待:<b>Post Service</b> 只管把貼文本身存好(先進 Post Cache,再落地到 Post DB);<b>Fanout Service</b> 負責把這篇貼文「派送」進每位朋友的 News Feed Cache — 這一步的完整機制,下面 Step 3 會拆給你看;<b>Notification Service</b> 則另外去發推播通知,跟動態消息快取是兩件事。</p>
+
+      <p class="fig-caption" style="margin-top:26px;">圖 3-2 — 動態消息組成流程(Newsfeed Building)</p>
+      <div class="flow">
+        <div class="box">使用者(Web/App)</div><span class="arrow">→</span>
+        <div class="box">負載平衡器</div><span class="arrow">→</span>
+        <div class="box">Web 伺服器</div><span class="arrow">→</span>
+        <div class="box amber">News Feed Service</div><span class="arrow">→</span>
+        <div class="box">News Feed Cache</div>
+      </div>
+      <p style="font-size:13px; color:#8fb2cc; margin-top:-6px;"><b>怎麼讀這張圖:</b>讀取路徑非常單純 — 一路到底只有一條線,沒有分支。News Feed Service 收到請求後,直接向 News Feed Cache 要一份「已經準備好」的清單就回傳了,完全不用去問任何一個朋友、也不用臨時去彙整任何東西。這正好呼應 Figure 3-1:又慢又重的整理工作,在朋友發文的當下就已經被 Fanout Service 做完、放進快取裡了,所以使用者讀取這一刻才會這麼輕巧快速。</p>
+
+      <p style="font-size:13px; color:#8fb2cc; margin-top:14px;">這兩張圖畫出來、跟面試官對過之後,你才進入 Step 3 深入挖細節 — Figure 3-1 裡「Fanout Service → News Feed Cache」這支箭頭,實際上是怎麼運作的?</p>`
     },
     3: {
       title: "設計深入探討",
@@ -360,7 +443,81 @@
         "時間管理很重要,很容易一頭栽進不能證明你能力的枝微末節裡出不來。",
         "舉例:設計短網址服務時,深入雜湊函式怎麼把長網址轉成短網址很有意思;設計聊天系統時,怎麼降低延遲、怎麼處理上線/離線狀態是值得深挖的主題。"
       ],
-      extra: `<p style="font-size:13.5px; color:#8fb2cc;">避免陷阱:花太多時間鉅細靡遺地講 Facebook 動態消息排序演算法(EdgeRank)的細節並不理想 — 這會吃掉寶貴時間,而且無法證明你設計可擴展系統的能力。</p>`
+      extra: `
+      <p style="font-size:13.5px; color:#8fb2cc;">Step 2 的 Figure 3-1 裡,「Fanout Service → News Feed Cache」只用一支箭頭帶過。Step 3 要做的,就是把這支箭頭拆開來看:貼文到底是怎麼被送進每一位朋友的動態消息裡的?下面是書中 Fanout Service 細節設計圖的重繪版本,按「下一步」照順序看它實際做了什麼:</p>
+
+      <div class="fanout-wrap">
+        <div class="fanout-svg-wrap">
+          <svg id="fanoutSvg" viewBox="0 0 620 420" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="fnArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"></path>
+              </marker>
+              <marker id="fnArrowActive" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--amber)"></path>
+              </marker>
+            </defs>
+
+            <rect class="fn-box" data-box="fanout" x="220" y="20" width="160" height="50"/>
+            <text class="fn-label" x="300" y="48">Fanout Service</text>
+
+            <rect class="fn-box" data-box="graphdb" x="450" y="20" width="150" height="55"/>
+            <text class="fn-label" x="525" y="45">Graph DB</text>
+            <text class="fn-sub" x="525" y="60">朋友關係圖</text>
+
+            <rect class="fn-box" data-box="usercache" x="450" y="130" width="150" height="55"/>
+            <text class="fn-label" x="525" y="155">User Cache</text>
+            <text class="fn-sub" x="525" y="170">朋友資料快取</text>
+
+            <rect class="fn-box" data-box="userdb" x="450" y="240" width="150" height="55"/>
+            <text class="fn-label" x="525" y="265">User DB</text>
+            <text class="fn-sub" x="525" y="280">快取沒中才查</text>
+
+            <rect class="fn-box" data-box="mq" x="220" y="130" width="160" height="50"/>
+            <text class="fn-label" x="300" y="158">Message Queue</text>
+
+            <rect class="fn-box" data-box="workers" x="220" y="240" width="160" height="50"/>
+            <text class="fn-label" x="300" y="268">Fanout Workers</text>
+
+            <rect class="fn-box" data-box="nfcache" x="220" y="350" width="160" height="55"/>
+            <text class="fn-label" x="300" y="375">News Feed Cache</text>
+            <text class="fn-sub" x="300" y="390">每位朋友各一份</text>
+
+            <path class="fn-arrow" data-step="1" d="M380,45 L448,45" marker-end="url(#fnArrow)"/>
+            <circle class="fn-numbg" data-step="1" cx="414" cy="30" r="10"/>
+            <text class="fn-num" data-step="1" x="414" y="34" text-anchor="middle">1</text>
+
+            <path class="fn-arrow" data-step="2" d="M380,60 C420,90 420,120 448,150" marker-end="url(#fnArrow)"/>
+            <circle class="fn-numbg" data-step="2" cx="420" cy="105" r="10"/>
+            <text class="fn-num" data-step="2" x="420" y="109" text-anchor="middle">2</text>
+            <path class="fn-arrow" data-step="2" d="M525,185 L525,238" marker-end="url(#fnArrow)" stroke-dasharray="3,3"/>
+
+            <path class="fn-arrow" data-step="3" d="M300,70 L300,128" marker-end="url(#fnArrow)"/>
+            <circle class="fn-numbg" data-step="3" cx="300" cy="98" r="10"/>
+            <text class="fn-num" data-step="3" x="300" y="102" text-anchor="middle">3</text>
+
+            <path class="fn-arrow" data-step="4" d="M300,180 L300,238" marker-end="url(#fnArrow)"/>
+            <circle class="fn-numbg" data-step="4" cx="300" cy="208" r="10"/>
+            <text class="fn-num" data-step="4" x="300" y="212" text-anchor="middle">4</text>
+
+            <path class="fn-arrow" data-step="5" d="M300,290 L300,348" marker-end="url(#fnArrow)"/>
+            <circle class="fn-numbg" data-step="5" cx="300" cy="318" r="10"/>
+            <text class="fn-num" data-step="5" x="300" y="322" text-anchor="middle">5</text>
+          </svg>
+        </div>
+        <div class="fn-controls">
+          <button class="navbtn" id="fnPrev">← 上一步</button>
+          <span class="mono" id="fnCounter" style="font-size:11px; color:var(--text-dim);">STEP 1 / 5</span>
+          <button class="navbtn" id="fnNext">下一步 →</button>
+        </div>
+        <div class="fn-panel">
+          <p class="fn-step-title" id="fnTitle"></p>
+          <p class="fn-step-text" id="fnText"></p>
+        </div>
+      </div>
+
+      <p style="font-size:13px; color:#8fb2cc;"><b>順序上的兩個「排隊」不要搞混:</b>③～④用到的 Message Queue,排的是<b>「處理任務」的順序</b>(哪個朋友的寫入任務先被 worker 領走),用完即丟,跟貼文內容無關。真正決定動態消息「新貼文排在最上面」的,是⑤寫進 News Feed Cache 時的規則 — 因為排序方式是時間倒序,新貼文通常直接被放進每位朋友清單的最前面即可,不需要每次都把整份清單重新排序一次。</p>
+      <p style="font-size:13px; color:#8fb2cc;">避免陷阱:花太多時間鉅細靡遺地講 Facebook 動態消息排序演算法(EdgeRank)的細節並不理想 — 這會吃掉寶貴時間,而且無法證明你設計可擴展系統的能力。</p>`
     },
     4: {
       title: "總結收尾",
@@ -371,10 +528,22 @@
         "幫面試官快速回顧一次你的設計,尤其如果你提過好幾種方案,長時間討論後幫她複習很有幫助。",
         "可以聊聊錯誤情境(伺服器故障、網路中斷等)。",
         "營運面的議題也值得一提:怎麼監控指標跟錯誤日誌?怎麼上線部署?",
-        "「下一個規模台階」是有趣的話題:如果現在的設計撐 100 萬使用者,要撐到 1000 萬需要改哪裡?",
         "如果還有時間,可以主動提出你會做的其他優化。"
       ],
-      extra: ""
+      extra: `
+      <p class="fig-caption">圖解 — 書中舉的「下一個規模台階」例子</p>
+      <div class="flow">
+        <div class="box">目前設計<br><span style="font-size:9.5px;">支援 100 萬使用者</span></div>
+        <span class="arrow">下一階段要改什麼？→</span>
+        <div class="stack">
+          <div class="box amber" style="font-size:11px; min-width:130px;">資料庫分片</div>
+          <div class="box amber" style="font-size:11px; min-width:130px;">多資料中心</div>
+          <div class="box amber" style="font-size:11px; min-width:130px;">CDN + 邊緣節點</div>
+        </div>
+        <span class="arrow">→</span>
+        <div class="box">撐到<br>1000 萬使用者</div>
+      </div>
+      <p style="font-size:13px; color:#8fb2cc; margin-top:-6px;">書中原話舉例:「如果現在的設計撐 100 萬使用者,要撐到 1000 萬,你需要改哪裡?」— 這是 Step 4 收尾時很好的加分題:不是重新設計,而是指出現有架構中,哪些元件會先撐不住(通常是資料庫),並提出具體要換上的技術(分片、多機房、CDN)。</p>`
     }
   };
 
@@ -389,11 +558,49 @@
     document.getElementById('stepBullets').innerHTML = data.bullets.map(b => "<li>"+b+"</li>").join("");
     document.getElementById('stepExtra').innerHTML = data.extra || "";
     segs.forEach(s => s.classList.toggle('active', s.dataset.step === String(step)));
+    if(step === 3) initFanoutStepper();
   }
 
   segs.forEach(seg => {
     seg.addEventListener('click', () => render(parseInt(seg.dataset.step, 10)));
   });
+
+  // ---- Fanout Service stepper (lives inside Step 3's dynamically-inserted HTML) ----
+  const fnSteps = [
+    { title: "① 取得朋友 ID 清單", text: "Fanout Service 先跑去 Graph DB,查出這篇貼文作者的所有朋友 ID — 這一步只拿到一串 ID,還不知道任何朋友的細節。", boxes: ["fanout","graphdb"] },
+    { title: "② 取得朋友資料", text: "拿著這串 ID 去 User Cache 查每位朋友的資料(帳號狀態、隱私設定等),快取沒中才退回去查 User DB — 跟第一章教的「先查快取,沒有才查資料庫」是同一招。", boxes: ["fanout","usercache","userdb"] },
+    { title: "③ 排進訊息佇列", text: "篩選好的朋友清單準備好後,Fanout Service 把「幫每個朋友寫一份動態消息」包成一筆筆任務,丟進 Message Queue,自己就可以先返回,不用等全部寫完。", boxes: ["fanout","mq"] },
+    { title: "④ Worker 領取任務", text: "另一群獨立的 Fanout Workers 專門從 Message Queue 裡把任務一筆筆領出來處理 — worker 數量能依佇列長短彈性增減,是第一章「訊息佇列讓生產者／消費者各自擴展」的實際案例。", boxes: ["mq","workers"] },
+    { title: "⑤ 寫入 News Feed Cache", text: "Worker 領到任務後,才真正把這篇貼文的 ID 寫進對應那位朋友的 News Feed Cache — 到這一步 fanout 才算真正完成,朋友打開 App(對應 Figure 3-2)才看得到這篇貼文。", boxes: ["workers","nfcache"] }
+  ];
+  let fnCurrent = 1;
+
+  function fnRender(){
+    const fnSvg = document.getElementById('fanoutSvg');
+    if(!fnSvg) return;
+    const data = fnSteps[fnCurrent-1];
+    document.getElementById('fnCounter').textContent = 'STEP ' + fnCurrent + ' / 5';
+    document.getElementById('fnTitle').textContent = data.title;
+    document.getElementById('fnText').textContent = data.text;
+    fnSvg.querySelectorAll('.fn-box').forEach(b => b.classList.toggle('active', data.boxes.includes(b.dataset.box)));
+    fnSvg.querySelectorAll('[data-step]').forEach(el => {
+      const isActive = parseInt(el.dataset.step, 10) === fnCurrent;
+      el.classList.toggle('active', isActive);
+      if(el.tagName === 'path'){
+        el.setAttribute('marker-end', isActive ? 'url(#fnArrowActive)' : 'url(#fnArrow)');
+      }
+    });
+  }
+
+  function initFanoutStepper(){
+    fnCurrent = 1;
+    const prevBtn = document.getElementById('fnPrev');
+    const nextBtn = document.getElementById('fnNext');
+    if(!prevBtn || !nextBtn) return;
+    prevBtn.onclick = () => { fnCurrent = Math.max(1, fnCurrent - 1); fnRender(); };
+    nextBtn.onclick = () => { fnCurrent = Math.min(5, fnCurrent + 1); fnRender(); };
+    fnRender();
+  }
 
   render(1);
 })();
