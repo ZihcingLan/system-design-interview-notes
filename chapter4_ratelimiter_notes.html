@@ -89,6 +89,26 @@
   .sim-log .deny{ color:var(--red); }
   .sim-note{ font-size:12px; color:var(--text-dim); margin-top:10px; }
 
+  /* sliding window log timeline */
+  .sw-track-wrap{ margin-top:8px; }
+  .sw-track{ height:40px; background:rgba(255,255,255,0.03); border:1px solid var(--line); position:relative; overflow:hidden; }
+  .sw-track-now{ position:absolute; right:0; top:0; bottom:0; width:2px; background:var(--amber); }
+  .sw-dot{ position:absolute; top:50%; width:10px; height:10px; border-radius:50%; background:var(--cyan); transform:translate(-50%,-50%); transition:left .1s linear, background .2s ease; }
+  .sw-dot.rejected{ background:var(--red); }
+  .sw-axis-label{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-dim); margin-top:4px; }
+
+  /* sliding window counter dual bars */
+  .swc-bars{ display:flex; gap:10px; margin-top:8px; }
+  .swc-bar-col{ flex:1; text-align:center; }
+  .swc-bar-track{ height:80px; background:rgba(255,255,255,0.03); border:1px solid var(--line); position:relative; display:flex; align-items:flex-end; overflow:hidden; }
+  .swc-bar-fill{ width:100%; background:linear-gradient(180deg, var(--amber), var(--cyan)); transition:height .25s ease; }
+  .swc-bar-fill.current{ background:linear-gradient(180deg, var(--cyan), rgba(95,212,224,0.3)); }
+  .swc-bar-label{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-dim); margin-top:6px; }
+  .swc-overlap-track{ height:8px; background:rgba(255,255,255,0.05); margin-top:12px; position:relative; overflow:hidden; }
+  .swc-overlap-fill{ height:100%; background:var(--amber); opacity:.5; transition:width .1s linear; }
+  .swc-formula{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-main); background:rgba(255,255,255,0.04); border:1px solid var(--line); padding:8px 12px; margin-top:10px; }
+  .swc-formula b{ color:var(--amber); }
+
   .case{ border:1px solid var(--line); background:rgba(15,51,88,0.18); margin-bottom:14px; }
   .case summary{ cursor:pointer; list-style:none; padding:16px 20px; display:flex; align-items:center; gap:14px; justify-content:space-between; }
   .case summary::-webkit-details-marker{display:none;}
@@ -157,6 +177,16 @@
       <div class="box">中介層 / API Gateway<br><span style="font-size:10px;">最常見的實務做法</span></div>
     </div>
     <p style="font-size:13.5px;">客戶端請求很容易被偽造,不是可靠的執行點。伺服器端限流讓你完全掌控演算法,但如果已經在用 API Gateway(統一做認證、SSL、IP 白名單等),把限流也放進去通常更省事;要不要自己蓋一套,取決於你的技術棧和工程資源。</p>
+
+    <p><b>書中給的四個判斷準則:</b>放伺服器端還是 API Gateway,沒有絕對答案,取決於公司現有的技術棧、工程資源、優先順序跟目標。可以照這個順序問自己:</p>
+    <table>
+      <tr><th>問自己</th><th>為什麼重要</th></tr>
+      <tr><td>① 現有技術棧撐不撐得住？</td><td>先看現在用的程式語言、快取服務等,是否有效率實作限流邏輯。如果語言本身處理高併發計數不擅長,自己刻在伺服器端反而吃力不討好。</td></tr>
+      <tr><td>② 想用哪種限流演算法？</td><td>全部自己刻在伺服器端,你對演算法有完全掌控權;但如果改用第三方 Gateway,能選的演算法可能就被廠商綁死,選擇會受限。</td></tr>
+      <tr><td>③ 已經有 API Gateway 了嗎？</td><td>如果架構已經是微服務、也已經有 Gateway 在做身份驗證、IP 白名單這些事,那把限流一起加進 Gateway,通常是最省事、最一致的做法。</td></tr>
+      <tr><td>④ 工程資源夠不夠？</td><td>自己蓋一套限流服務要花不少時間。如果團隊人力有限,直接買商用 API Gateway(內建限流功能)可能是更務實的選擇,而不是硬要自研。</td></tr>
+    </table>
+    <p style="font-size:13.5px; color:#8fb2cc;">簡單記法:這四個問題依序是「<b>技術棧撐得住嗎 → 演算法主控權要不要 → Gateway 有沒有現成的 → 人力夠不夠自己刻</b>」,面試被問「你會放哪裡」時,照這個順序講一輪,比直接給答案更能展現判斷過程。</p>
   </section>
 
   <!-- ================= SIMULATOR ================= -->
@@ -170,8 +200,10 @@
         <span class="mono">FIG. 4-LAB — LIVE SIMULATOR</span>
       </div>
       <div class="algo-tabs">
-        <div class="algo-tab active" data-algo="token">權杖桶 Token Bucket</div>
-        <div class="algo-tab" data-algo="fixed">固定窗口計數器 Fixed Window</div>
+        <div class="algo-tab active" data-algo="token">權杖桶</div>
+        <div class="algo-tab" data-algo="fixed">固定窗口</div>
+        <div class="algo-tab" data-algo="slog">滑動窗口日誌</div>
+        <div class="algo-tab" data-algo="scounter">滑動窗口計數器</div>
       </div>
 
       <!-- token bucket panel -->
@@ -187,6 +219,7 @@
           </div>
           <button class="simbtn" id="tb-send">送出 1 個請求</button>
           <button class="simbtn amber" id="tb-burst">瞬間送出 6 個請求</button>
+          <button class="simbtn" id="tb-reset" style="border-color:var(--text-dim); color:var(--text-dim);">重置</button>
           <div class="gauge-wrap">
             <div class="gauge-label"><span>桶內剩餘權杖</span><span id="tb-gauge-text">4.0 / 4</span></div>
             <div class="gauge-track"><div class="gauge-fill" id="tb-gauge-fill" style="width:100%;"></div></div>
@@ -206,6 +239,7 @@
           <p class="sim-note" style="margin-top:0;">為了讓你幾秒內就能看到效果,這裡把窗口壓縮成 <b>5 秒</b>,原理跟書中「每分鐘」的例子完全一樣。</p>
           <button class="simbtn" id="fw-send">送出 1 個請求</button>
           <button class="simbtn amber" id="fw-burst">模擬邊界突發(書中 Fig.4-9)</button>
+          <button class="simbtn" id="fw-reset" style="border-color:var(--text-dim); color:var(--text-dim);">重置</button>
           <div class="gauge-wrap">
             <div class="gauge-label"><span>本窗口計數</span><span id="fw-gauge-text">0 / 3</span></div>
             <div class="gauge-track"><div class="gauge-fill" id="fw-gauge-fill" style="width:0%;"></div></div>
@@ -214,6 +248,56 @@
           <p class="sim-note">「模擬邊界突發」會在目前窗口快結束前塞滿請求,窗口一重置馬上又塞滿一次 — 你會看到短短一瞬間通過的請求數,遠超過設定的上限。</p>
         </div>
         <div class="sim-log" id="fw-log"></div>
+      </div>
+
+      <!-- sliding window log panel -->
+      <div class="sim-body" id="panel-slog" style="display:none;">
+        <div class="sim-controls">
+          <div class="field">
+            <label>滾動窗口內最多 <span class="val" id="v-slog-limit">2</span> 個請求</label>
+            <input type="range" id="slog-limit" min="2" max="6" step="1" value="2">
+          </div>
+          <p class="sim-note" style="margin-top:0;">窗口一樣壓縮成 <b>5 秒</b>方便測試。點越多下「送出請求」,越能看到窗口怎麼隨時間往右「滑動」。</p>
+          <button class="simbtn" id="slog-send">送出 1 個請求</button>
+          <button class="simbtn amber" id="slog-burst">瞬間送出 4 個請求</button>
+          <button class="simbtn" id="slog-reset" style="border-color:var(--text-dim); color:var(--text-dim);">重置</button>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>目前日誌裡的請求數</span><span id="slog-gauge-text">0 / 2</span></div>
+            <div class="gauge-track"><div class="gauge-fill" id="slog-gauge-fill" style="width:0%;"></div></div>
+          </div>
+          <div class="sw-track-wrap">
+            <div class="sw-track" id="slog-track"><div class="sw-track-now"></div></div>
+            <div class="sw-axis-label"><span>5 秒前</span><span>現在</span></div>
+          </div>
+          <p class="sim-note">藍點是「通過」的請求時間戳,紅點是「被擋」的請求 — 注意被擋的請求時間戳<b>依然留在日誌裡</b>(書中原文特別強調這點),點會隨時間往左滑出窗口外、自動消失。</p>
+        </div>
+        <div class="sim-log" id="slog-log"></div>
+      </div>
+
+      <!-- sliding window counter panel -->
+      <div class="sim-body" id="panel-scounter" style="display:none;">
+        <div class="sim-controls">
+          <div class="field">
+            <label>估計值上限 <span class="val" id="v-swc-limit">7</span> 個請求</label>
+            <input type="range" id="swc-limit" min="3" max="12" step="1" value="7">
+          </div>
+          <p class="sim-note" style="margin-top:0;">一樣壓縮成 <b>5 秒</b>一個窗口。左邊是「上一窗口」,右邊是「目前窗口」— 越靠近窗口尾端送請求,上一窗口占的權重會越低。</p>
+          <button class="simbtn" id="swc-send">送出 1 個請求</button>
+          <button class="simbtn" id="swc-reset" style="border-color:var(--text-dim); color:var(--text-dim);">重置</button>
+          <div class="swc-bars">
+            <div class="swc-bar-col">
+              <div class="swc-bar-track"><div class="swc-bar-fill" id="swc-prev-fill" style="height:0%;"></div></div>
+              <div class="swc-bar-label">上一窗口 <span id="swc-prev-text">0</span></div>
+            </div>
+            <div class="swc-bar-col">
+              <div class="swc-bar-track"><div class="swc-bar-fill current" id="swc-cur-fill" style="height:0%;"></div></div>
+              <div class="swc-bar-label">目前窗口 <span id="swc-cur-text">0</span></div>
+            </div>
+          </div>
+          <div class="swc-overlap-track"><div class="swc-overlap-fill" id="swc-overlap-fill" style="width:0%;"></div></div>
+          <div class="swc-formula" id="swc-formula">目前 0 ＋ 上一窗口 0 × 0% 權重 ＝ 估計 0.0</div>
+        </div>
+        <div class="sim-log" id="swc-log"></div>
       </div>
     </div>
   </section>
@@ -383,7 +467,7 @@
 (function(){
   // ---- tab switching ----
   const tabs = document.querySelectorAll('.algo-tab');
-  const panels = { token: document.getElementById('panel-token'), fixed: document.getElementById('panel-fixed') };
+  const panels = { token: document.getElementById('panel-token'), fixed: document.getElementById('panel-fixed'), slog: document.getElementById('panel-slog'), scounter: document.getElementById('panel-scounter') };
   tabs.forEach(t => t.addEventListener('click', () => {
     tabs.forEach(x => x.classList.remove('active'));
     t.classList.add('active');
@@ -435,6 +519,12 @@
   tbRateEl.addEventListener('input', () => { tbRate = parseFloat(tbRateEl.value); tbRender(); });
   document.getElementById('tb-send').addEventListener('click', tbRequest);
   document.getElementById('tb-burst').addEventListener('click', () => { for(let i=0;i<6;i++) tbRequest(); });
+  document.getElementById('tb-reset').addEventListener('click', () => {
+    tbTokens = tbCapacity;
+    tbLast = Date.now();
+    tbLog.innerHTML = '';
+    tbRender();
+  });
   setInterval(() => { tbRefill(); tbRender(); }, 300);
   tbRender();
 
@@ -479,8 +569,124 @@
     const msToNextWindow = WINDOW_MS - (now - fwWindowIndex * WINDOW_MS) + 50;
     setTimeout(() => { for(let i=0;i<fwLimit;i++) fwRequest(); }, msToNextWindow);
   });
+  document.getElementById('fw-reset').addEventListener('click', () => {
+    fwWindowIndex = Math.floor(Date.now() / WINDOW_MS);
+    fwCount = 0;
+    fwLog.innerHTML = '';
+    fwRender();
+  });
   setInterval(fwRender, 100);
   fwRender();
+
+  // ---- Sliding window log ----
+  const slogLimitEl = document.getElementById('slog-limit');
+  const slogLog = document.getElementById('slog-log');
+  const slogTrack = document.getElementById('slog-track');
+  let slogLimit = parseInt(slogLimitEl.value, 10);
+  let slogEntries = []; // {t: timestamp, rejected: bool, el: dotElement}
+
+  function slogPrune(){
+    const now = Date.now();
+    slogEntries = slogEntries.filter(e => {
+      const alive = (now - e.t) <= WINDOW_MS;
+      if(!alive && e.el) e.el.remove();
+      return alive;
+    });
+  }
+  function slogRender(){
+    slogPrune();
+    const now = Date.now();
+    document.getElementById('v-slog-limit').textContent = slogLimit;
+    document.getElementById('slog-gauge-text').textContent = slogEntries.length + ' / ' + slogLimit;
+    document.getElementById('slog-gauge-fill').style.width = Math.min(100, slogEntries.length / slogLimit * 100) + '%';
+    const trackW = slogTrack.clientWidth || 300;
+    slogEntries.forEach(e => {
+      const age = now - e.t;
+      const leftPx = trackW - (age / WINDOW_MS) * trackW;
+      if(e.el) e.el.style.left = Math.max(2, Math.min(trackW - 2, leftPx)) + 'px';
+    });
+  }
+  function slogRequest(){
+    slogPrune();
+    const now = Date.now();
+    const wouldSize = slogEntries.length + 1;
+    const allowed = wouldSize <= slogLimit;
+    const dot = document.createElement('div');
+    dot.className = 'sw-dot' + (allowed ? '' : ' rejected');
+    dot.style.left = (slogTrack.clientWidth - 2) + 'px';
+    slogTrack.appendChild(dot);
+    slogEntries.push({ t: now, rejected: !allowed, el: dot });
+    logEntry(slogLog, '日誌大小變成 ' + wouldSize, allowed);
+    slogRender();
+  }
+  slogLimitEl.addEventListener('input', () => { slogLimit = parseInt(slogLimitEl.value, 10); slogRender(); });
+  document.getElementById('slog-send').addEventListener('click', slogRequest);
+  document.getElementById('slog-burst').addEventListener('click', () => { for(let i=0;i<4;i++) slogRequest(); });
+  document.getElementById('slog-reset').addEventListener('click', () => {
+    slogEntries.forEach(e => { if(e.el) e.el.remove(); });
+    slogEntries = [];
+    slogLog.innerHTML = '';
+    slogRender();
+  });
+  setInterval(slogRender, 150);
+  slogRender();
+
+  // ---- Sliding window counter ----
+  const swcLimitEl = document.getElementById('swc-limit');
+  const swcLog = document.getElementById('swc-log');
+  let swcLimit = parseInt(swcLimitEl.value, 10);
+  let swcWindowIndex = Math.floor(Date.now() / WINDOW_MS);
+  let swcCurrent = 0;
+  let swcPrev = 0;
+
+  function swcCheckWindow(){
+    const idx = Math.floor(Date.now() / WINDOW_MS);
+    if(idx !== swcWindowIndex){
+      if(idx === swcWindowIndex + 1){ swcPrev = swcCurrent; } else { swcPrev = 0; }
+      swcCurrent = 0;
+      swcWindowIndex = idx;
+    }
+  }
+  function swcEstimate(){
+    const now = Date.now();
+    const into = (now - swcWindowIndex * WINDOW_MS) / WINDOW_MS; // 0..1 elapsed into current window
+    const overlap = Math.max(0, 1 - into); // remaining weight of previous window
+    const est = swcCurrent + swcPrev * overlap;
+    return { overlap, est, into };
+  }
+  function swcRender(){
+    swcCheckWindow();
+    document.getElementById('v-swc-limit').textContent = swcLimit;
+    const { overlap, est, into } = swcEstimate();
+    const maxBar = Math.max(swcLimit, swcPrev, swcCurrent, 1);
+    document.getElementById('swc-prev-fill').style.height = (swcPrev / maxBar * 100) + '%';
+    document.getElementById('swc-cur-fill').style.height = (swcCurrent / maxBar * 100) + '%';
+    document.getElementById('swc-prev-text').textContent = swcPrev;
+    document.getElementById('swc-cur-text').textContent = swcCurrent;
+    document.getElementById('swc-overlap-fill').style.width = (overlap * 100) + '%';
+    document.getElementById('swc-formula').innerHTML = '目前 <b>' + swcCurrent + '</b> ＋ 上一窗口 <b>' + swcPrev + '</b> × ' + Math.round(overlap*100) + '% 權重 ＝ 估計 <b>' + est.toFixed(1) + '</b> / ' + swcLimit;
+  }
+  function swcRequest(){
+    swcCheckWindow();
+    const { overlap, est } = swcEstimate();
+    if(est < swcLimit){
+      swcCurrent += 1;
+      logEntry(swcLog, '估計值 ' + est.toFixed(1) + ' → 放行後 ' + (swcCurrent) , true);
+    } else {
+      logEntry(swcLog, '估計值 ' + est.toFixed(1) + ' 已達上限', false);
+    }
+    swcRender();
+  }
+  swcLimitEl.addEventListener('input', () => { swcLimit = parseInt(swcLimitEl.value, 10); swcRender(); });
+  document.getElementById('swc-send').addEventListener('click', swcRequest);
+  document.getElementById('swc-reset').addEventListener('click', () => {
+    swcWindowIndex = Math.floor(Date.now() / WINDOW_MS);
+    swcCurrent = 0; swcPrev = 0;
+    swcLog.innerHTML = '';
+    swcRender();
+  });
+  setInterval(swcRender, 150);
+  swcRender();
 })();
 </script>
 
