@@ -201,6 +201,7 @@
       </div>
       <div class="algo-tabs">
         <div class="algo-tab active" data-algo="token">權杖桶</div>
+        <div class="algo-tab" data-algo="leak">漏桶</div>
         <div class="algo-tab" data-algo="fixed">固定窗口</div>
         <div class="algo-tab" data-algo="slog">滑動窗口日誌</div>
         <div class="algo-tab" data-algo="scounter">滑動窗口計數器</div>
@@ -227,6 +228,29 @@
           <p class="sim-note">每個請求要消耗 1 個權杖;桶子空了就擋掉。只要平常有累積權杖,就能「短暫爆發」— 這是 Amazon 和 Stripe 都採用這個演算法的原因。</p>
         </div>
         <div class="sim-log" id="tb-log"></div>
+      </div>
+
+      <!-- leaking bucket panel -->
+      <div class="sim-body" id="panel-leak" style="display:none;">
+        <div class="sim-controls">
+          <div class="field">
+            <label>佇列容量 <span class="val" id="v-lb-cap">6</span> 個位置</label>
+            <input type="range" id="lb-cap" min="3" max="10" step="1" value="6">
+          </div>
+          <div class="field">
+            <label>固定處理速率 <span class="val" id="v-lb-rate">1</span> 個/秒</label>
+            <input type="range" id="lb-rate" min="1" max="4" step="1" value="1">
+          </div>
+          <button class="simbtn" id="lb-send">送出 1 個請求</button>
+          <button class="simbtn amber" id="lb-burst">瞬間送出 6 個請求</button>
+          <button class="simbtn" id="lb-reset" style="border-color:var(--text-dim); color:var(--text-dim);">重置</button>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>佇列中排隊的請求</span><span id="lb-gauge-text">0 / 6</span></div>
+            <div class="gauge-track"><div class="gauge-fill" id="lb-gauge-fill" style="width:0%;"></div></div>
+          </div>
+          <p class="sim-note">請求先進 FIFO 佇列排隊,不管湧入多猛,後面永遠以<b>固定速率</b>一個一個吐出去處理;佇列滿了,新請求就直接被丟棄。留意日誌裡「⇩ 定速吐出」的節奏完全不受你按幾次「送出」影響。</p>
+        </div>
+        <div class="sim-log" id="lb-log"></div>
       </div>
 
       <!-- fixed window panel -->
@@ -467,7 +491,7 @@
 (function(){
   // ---- tab switching ----
   const tabs = document.querySelectorAll('.algo-tab');
-  const panels = { token: document.getElementById('panel-token'), fixed: document.getElementById('panel-fixed'), slog: document.getElementById('panel-slog'), scounter: document.getElementById('panel-scounter') };
+  const panels = { token: document.getElementById('panel-token'), leak: document.getElementById('panel-leak'), fixed: document.getElementById('panel-fixed'), slog: document.getElementById('panel-slog'), scounter: document.getElementById('panel-scounter') };
   tabs.forEach(t => t.addEventListener('click', () => {
     tabs.forEach(x => x.classList.remove('active'));
     t.classList.add('active');
@@ -527,6 +551,52 @@
   });
   setInterval(() => { tbRefill(); tbRender(); }, 300);
   tbRender();
+
+  // ---- Leaking bucket ----
+  const lbCapEl = document.getElementById('lb-cap');
+  const lbRateEl = document.getElementById('lb-rate');
+  const lbLog = document.getElementById('lb-log');
+  let lbCapacity = parseInt(lbCapEl.value, 10);
+  let lbRate = parseInt(lbRateEl.value, 10);
+  let lbQueue = [];
+  let lbLeakTimer = null;
+
+  function lbRender(){
+    document.getElementById('v-lb-cap').textContent = lbCapacity;
+    document.getElementById('v-lb-rate').textContent = lbRate;
+    document.getElementById('lb-gauge-text').textContent = lbQueue.length + ' / ' + lbCapacity;
+    document.getElementById('lb-gauge-fill').style.width = (lbQueue.length / lbCapacity * 100) + '%';
+  }
+  function lbRequest(){
+    if(lbQueue.length < lbCapacity){
+      lbQueue.push(Date.now());
+      logEntry(lbLog, '進佇列排隊 (' + lbQueue.length + '/' + lbCapacity + ')', true);
+    } else {
+      logEntry(lbLog, '佇列已滿,請求被丟棄', false);
+    }
+    lbRender();
+  }
+  function lbStartLeaking(){
+    if(lbLeakTimer) clearInterval(lbLeakTimer);
+    lbLeakTimer = setInterval(() => {
+      if(lbQueue.length > 0){
+        lbQueue.shift();
+        logEntry(lbLog, '⇩ 定速吐出 1 個,佇列剩 ' + lbQueue.length, true);
+        lbRender();
+      }
+    }, 1000 / lbRate);
+  }
+  lbCapEl.addEventListener('input', () => { lbCapacity = parseInt(lbCapEl.value, 10); lbRender(); });
+  lbRateEl.addEventListener('input', () => { lbRate = parseInt(lbRateEl.value, 10); lbStartLeaking(); });
+  document.getElementById('lb-send').addEventListener('click', lbRequest);
+  document.getElementById('lb-burst').addEventListener('click', () => { for(let i=0;i<6;i++) lbRequest(); });
+  document.getElementById('lb-reset').addEventListener('click', () => {
+    lbQueue = [];
+    lbLog.innerHTML = '';
+    lbRender();
+  });
+  lbStartLeaking();
+  lbRender();
 
   // ---- Fixed window counter ----
   const fwLimitEl = document.getElementById('fw-limit');
