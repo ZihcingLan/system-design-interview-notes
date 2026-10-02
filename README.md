@@ -16,11 +16,11 @@ https://zihcinglan.github.io/system-design-interview-notes/
 
 | # | 章節 | 筆記 | 狀態 |
 |---|---|---|---|
-| 1 | Scale From Zero To Millions Of Users | [chapter1_blueprint_notes.html](chapter1_blueprint_notes.html) | ✅ |
-| 2 | Back-of-the-Envelope Estimation | [chapter2_estimation_notes.html](chapter2_estimation_notes.html) | ✅ |
-| 3 | A Framework for System Design Interviews | [chapter3_framework_notes.html](chapter3_framework_notes.html) | ✅ |
-| 4 | Design a Rate Limiter | [chapter4_ratelimiter_notes.html](chapter4_ratelimiter_notes.html) | ✅ |
-| 5 | Design Consistent Hashing | — | ⬜ |
+| 1 | Scale From Zero To Millions Of Users | https://zihcinglan.github.io/system-design-interview-notes/chapter1_blueprint_notes.html| ✅ |
+| 2 | Back-of-the-Envelope Estimation | https://zihcinglan.github.io/system-design-interview-notes/chapter2_estimation_notes.html | ✅ |
+| 3 | A Framework for System Design Interviews | https://zihcinglan.github.io/system-design-interview-notes/chapter3_framework_notes.html | ✅ |
+| 4 | Design a Rate Limiter | https://zihcinglan.github.io/system-design-interview-notes/chapter4_ratelimiter_notes.html | ✅ |
+| 5 | Design Consistent Hashing | https://zihcinglan.github.io/system-design-interview-notes/chapter5_consistenthashing_notes.html | ✅ |
 | 6 | Design a Key-Value Store | — | ⬜ |
 | 7 | Design a Unique ID Generator in Distributed Systems | — | ⬜ |
 | 8 | Design a URL Shortener | — | ⬜ |
@@ -48,6 +48,7 @@ system-design-interview-notes/
 ├── chapter2_estimation_notes.html
 ├── chapter3_framework_notes.html
 ├── chapter4_ratelimiter_notes.html
+├── chapter5_consistenthashing_notes.html 
 └── README.md
 ```
 
