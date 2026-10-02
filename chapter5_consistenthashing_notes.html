@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第五章筆記｜設計一致性雜湊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#081d30; --navy:#0c2b47; --panel:#0f3358;
+    --grid-line: rgba(146,203,232,0.09);
+    --cyan:#5fd4e0; --cyan-dim: rgba(95,212,224,0.35);
+    --amber:#f2a93b; --red:#e8607a; --purple:#8f7ee8; --green:#4fd48a; --orange:#e0954f;
+    --text-main:#eaf6fb; --text-dim:#8fb2cc; --line: rgba(234,246,251,0.16);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--navy-deep);
+    background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--text-main); font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  a{color:var(--cyan);}
+  .titleblock{ max-width:1100px; margin:0 auto; padding:64px 28px 40px; border-bottom:1px solid var(--line); }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; letter-spacing:.25em; font-size:12px; color:var(--cyan); text-transform:uppercase; }
+  h1.doctitle{ font-size:clamp(28px,5vw,52px); margin:10px 0 6px; font-weight:900; letter-spacing:-0.01em; }
+  .subtitle{color:var(--text-dim); font-size:17px; max-width:640px;}
+  .stampgrid{ margin-top:32px; display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); }
+  .stampgrid div{ padding:10px 14px; border-right:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-dim); }
+  .stampgrid div:last-child{border-right:none;}
+  .stampgrid b{display:block; color:var(--text-main); font-size:13px; margin-top:3px;}
+  @media(max-width:700px){ .stampgrid{grid-template-columns:repeat(2,1fr);} }
+  .toc{ max-width:1100px; margin:0 auto; padding:18px 28px; display:flex; flex-wrap:wrap; gap:6px 18px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:rgba(8,29,48,0.92); backdrop-filter:blur(6px); z-index:50; }
+  .toc a{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--text-dim); text-decoration:none; padding:5px 0; border-bottom:1px solid transparent; }
+  .toc a:hover{color:var(--cyan); border-color:var(--cyan-dim);}
+  main{max-width:1100px; margin:0 auto; padding:20px 28px 100px;}
+  .sheet{ margin-top:56px; border:1px solid var(--line); background:linear-gradient(180deg, rgba(15,51,88,0.35), rgba(15,51,88,0.08)); padding:30px clamp(16px,4vw,40px) 36px; position:relative; }
+  .sheetno{ position:absolute; top:-13px; left:24px; background:var(--navy-deep); padding:0 10px; font-family:'IBM Plex Mono', monospace; color:var(--amber); font-size:12px; letter-spacing:.15em; }
+  h2.sec{ font-size:clamp(20px,3vw,28px); margin:6px 0 4px; font-weight:700; }
+  .sec-sub{color:var(--text-dim); font-size:14px; margin-bottom:22px;}
+  p{margin:0 0 12px; color:#d7e8f2;}
+  ul.notes{margin:0 0 14px; padding-left:20px; color:#d7e8f2;}
+  ul.notes li{margin-bottom:7px;}
+  .tag{ display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--cyan); border:1px solid var(--cyan-dim); padding:2px 8px; border-radius:2px; margin:2px 6px 2px 0; }
+  .warn{color:var(--amber);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media(max-width:760px){ .grid2{grid-template-columns:1fr;} }
+  table{border-collapse:collapse; width:100%; margin:10px 0 18px; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--cyan); letter-spacing:.05em; background:rgba(95,212,224,0.06);}
+  td.hit{ background:rgba(232,96,122,0.12); color:var(--red); }
+
+  .flow{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:18px 4px; justify-content:center; }
+  .box{ border:1px solid var(--cyan-dim); background:rgba(95,212,224,0.05); padding:11px 15px; font-family:'IBM Plex Mono',monospace; font-size:12px; text-align:center; min-width:96px; color:var(--text-main); line-height:1.5; }
+  .box.amber{border-color:rgba(242,169,59,0.55); background:rgba(242,169,59,0.06); color:var(--amber);}
+  .arrow{color:var(--text-dim); font-size:15px; font-family:'IBM Plex Mono',monospace;}
+
+  /* ring lab */
+  .lab{ border:1px solid var(--line); background:var(--navy); }
+  .lab-top{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 20px 0; flex-wrap:wrap; gap:6px; }
+  .lab-top .mono{font-size:11px; color:var(--text-dim); letter-spacing:.1em;}
+  .ring-body{ display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:16px 20px 6px; }
+  @media(max-width:800px){ .ring-body{grid-template-columns:1fr;} }
+  #ringSvg{ width:100%; height:auto; display:block; max-width:420px; margin:0 auto; }
+  .ring-controls .field{ margin-bottom:16px; }
+  .ring-controls label{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .ring-controls label span.val{ color:var(--cyan); font-weight:600; }
+  input[type=range]{ width:100%; -webkit-appearance:none; height:3px; background:var(--line); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 4px rgba(95,212,224,0.18); cursor:pointer; }
+  .simbtn{ font-family:'IBM Plex Mono',monospace; background:rgba(95,212,224,0.08); border:1px solid var(--cyan-dim); color:var(--cyan); padding:9px 14px; cursor:pointer; font-size:12.5px; margin-right:8px; margin-top:4px; }
+  .simbtn:hover{ background:rgba(95,212,224,0.18); }
+  .simbtn:disabled{ opacity:.35; cursor:not-allowed; }
+  .simbtn.ghost{ border-color:var(--text-dim); color:var(--text-dim); }
+  .chip-row{ display:flex; gap:5px; flex-wrap:wrap; padding:10px 0; justify-content:center; }
+  .chip{ width:22px; height:22px; border-radius:3px; }
+  .compare-box{ margin-top:14px; border:1px solid var(--line); padding:12px 16px; background:rgba(255,255,255,0.03); }
+  .compare-row{ display:flex; justify-content:space-between; font-size:13px; padding:5px 0; }
+  .compare-row b{ font-family:'IBM Plex Mono',monospace; font-size:15px; }
+  .ring-legend{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; padding:4px 0 12px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); }
+  .ring-legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .ring-legend i{ width:10px; height:10px; border-radius:2px; display:inline-block; }
+  #hwSvg{ width:100%; height:auto; display:block; max-width:380px; margin:0 auto; }
+
+  .case{ border:1px solid var(--line); background:rgba(15,51,88,0.18); margin-bottom:14px; }
+  .case summary{ cursor:pointer; list-style:none; padding:16px 20px; display:flex; align-items:center; gap:14px; justify-content:space-between; }
+  .case summary::-webkit-details-marker{display:none;}
+  .case-head{display:flex; align-items:center; gap:14px;}
+  .case-mark{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--navy-deep); background:var(--cyan); padding:3px 8px; flex-shrink:0; }
+  .case-name{font-weight:700; font-size:16px;}
+  .case-hint{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);}
+  .case-plus{ font-family:'IBM Plex Mono',monospace; font-size:18px; color:var(--cyan); transition:transform .25s ease; flex-shrink:0; }
+  .case[open] .case-plus{ transform:rotate(45deg); }
+  .case-body{ padding:2px 20px 22px; border-top:1px solid var(--line); }
+  .case-body p{font-size:14px;}
+  .case-tag{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--amber); border:1px solid rgba(242,169,59,0.4); padding:1px 7px; margin-right:6px; }
+
+  footer{ text-align:center; padding:40px 20px 60px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); border-top:1px solid var(--line); }
+  .checklist{list-style:none; padding:0; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:10px 24px;}
+  @media(max-width:700px){.checklist{grid-template-columns:1fr;}}
+  .checklist li{ font-size:14.5px; color:#d7e8f2; padding-left:26px; position:relative; }
+  .checklist li::before{ content:"□"; position:absolute; left:0; top:0; color:var(--cyan); font-size:16px; }
+</style>
+</head>
+<body>
+
+<div class="titleblock">
+  <div class="eyebrow">System Design Interview — An Insider's Guide</div>
+  <h1 class="doctitle">第五章：設計一致性雜湊</h1>
+  <p class="subtitle">Design Consistent Hashing — 怎麼把資料平均分散到一群伺服器上,還要讓「加一台、拔一台」的代價降到最低?</p>
+  <div class="stampgrid mono">
+    <div>原文作者<b>Alex Xu</b></div>
+    <div>圖表<b>本頁重繪 / 互動式</b></div>
+    <div>章節<b>CH.05 / 16</b></div>
+    <div>筆記語言<b>繁體中文</b></div>
+  </div>
+</div>
+
+<nav class="toc">
+  <a href="index.html" style="color:#f2a93b;">← 目錄</a>
+  <a href="chapter4_ratelimiter_notes.html">← 第四章</a>
+  <a href="#s-problem">01 重新雜湊的問題</a>
+  <a href="#s-howitworks">02 雜湊環怎麼運作</a>
+  <a href="#lab">03 互動雜湊環實驗室</a>
+  <a href="#s-vnode">04 兩個問題與虛擬節點</a>
+  <a href="#s-cases">05 業界真實案例</a>
+  <a href="#s-sum">06 總結</a>
+</nav>
+
+<main>
+
+  <!-- ================= problem ================= -->
+  <section class="sheet" id="s-problem">
+    <div class="sheetno">SHEET 01</div>
+    <h2 class="sec">先搞懂問題:為什麼「取模雜湊」會出事</h2>
+    <p class="sec-sub">要做到水平擴展,必須把請求/資料有效率、平均地分散到多台伺服器上。最直覺的做法是:<code class="mono" style="color:var(--amber);">serverIndex = hash(key) % N</code>(N 是伺服器數量)。這個做法在伺服器數量固定不變時運作良好,但只要 N 一變,就會出大事。</p>
+
+    <table>
+      <tr><th>Key</th><th>Hash</th><th class="mono">hash % 4<br>(4 台伺服器)</th><th class="mono">hash % 3<br>(server 1 離線後)</th></tr>
+      <tr><td>key0</td><td>...</td><td>1</td><td class="hit">2</td></tr>
+      <tr><td>key1</td><td>...</td><td>2</td><td class="hit">0</td></tr>
+      <tr><td>key2</td><td>...</td><td>0</td><td>0</td></tr>
+      <tr><td>key3</td><td>...</td><td>1</td><td class="hit">2</td></tr>
+      <tr><td>key4</td><td>...</td><td>3</td><td class="hit">1</td></tr>
+      <tr><td>key5</td><td>...</td><td>0</td><td>0</td></tr>
+      <tr><td>key6</td><td>...</td><td>2</td><td class="hit">0</td></tr>
+      <tr><td>key7</td><td>...</td><td>1</td><td class="hit">2</td></tr>
+    </table>
+    <p style="font-size:13px; color:#8fb2cc; margin-top:-6px;">紅色標記的欄位代表「伺服器指派結果變了」。書中這個例子只是拔掉 1 台伺服器(server 1 離線,N 從 4 變成 3),結果 <b>8 個 key 裡有 6 個全部要搬家</b> — 不只是原本存在 server 1 上的 key,而是幾乎所有 key 都被重新分配到不同伺服器,造成一波大規模的快取未命中(cache miss)風暴。</p>
+    <p><b class="warn">一致性雜湊(Consistent Hashing)就是為了解決這個問題而生的技術。</b>引用 Wikipedia 的定義:當雜湊表重新調整大小時,一致性雜湊平均只需要重新對應 <code>k/n</code> 個 key(k 是 key 的數量,n 是槽位數量),而不是像傳統雜湊表那樣幾乎全部重新對應。</p>
+  </section>
+
+  <!-- ================= how it works (step-by-step diagram) ================= -->
+  <section class="sheet" id="s-howitworks">
+    <div class="sheetno">SHEET 02 — 逐步圖解</div>
+    <h2 class="sec">雜湊環怎麼運作</h2>
+    <p class="sec-sub">在玩互動實驗室之前,先用書中的邏輯順序,一步一步看懂這個環是怎麼「長出來」的。按「下一步」,圖會跟著累積變化。</p>
+
+    <div class="lab">
+      <div class="lab-top">
+        <span class="mono">FIG. 5-1 ～ 5-6 — 重繪示意圖</span>
+        <span class="mono" id="hwCounter">STEP 1 / 6</span>
+      </div>
+      <div class="ring-body">
+        <div>
+          <svg id="hwSvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div class="ring-controls">
+          <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
+            <button class="simbtn" id="hwPrev">← 上一步</button>
+            <button class="simbtn" id="hwNext">下一步 →</button>
+          </div>
+          <p class="fn-step-title" id="hwTitle" style="font-size:16px; font-weight:700; color:var(--amber); margin:0 0 8px;"></p>
+          <p class="fn-step-text" id="hwText" style="font-size:13.5px; color:#d7e8f2; margin:0;"></p>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:13px; color:#8fb2cc; margin-top:16px;">Step 5、6 示範的「新增/移除伺服器只影響一小段範圍」,正是上面「重新雜湊的問題」想解決的痛點 — 搬家範圍被限制住,不會波及整個環。接下來 Sheet 03 可以自己動手玩更多台伺服器、更多 key 的版本。</p>
+  </section>
+
+  <!-- ================= LAB ================= -->
+  <section class="sheet" id="lab">
+    <div class="sheetno">SHEET 03 — 互動雜湊環實驗室</div>
+    <h2 class="sec">自己加/拔伺服器,看看誰需要搬家</h2>
+    <p class="sec-sub">剛剛的逐步圖解只用了 4 台伺服器、3 個 key。這裡換成 12 個 key、最多 6 台伺服器,自己按「新增」「移除」,右邊會同時列出「如果是傳統取模雜湊,需要搬家的 key 數」跟「一致性雜湊實際需要搬家的 key 數」,兩者的差距就是整章的重點。</p>
+
+    <div class="lab">
+      <div class="lab-top">
+        <span class="mono">FIG. 5-LAB — HASH RING SIMULATOR</span>
+        <span class="mono" id="ringCounter">4 台伺服器 · 每台 1 個虛擬節點</span>
+      </div>
+      <div class="ring-body">
+        <div>
+          <svg id="ringSvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="ring-legend" id="ringLegend"></div>
+        </div>
+        <div class="ring-controls">
+          <div class="field">
+            <label>每台伺服器的虛擬節點數 <span class="val" id="v-vnode">1</span></label>
+            <input type="range" id="vnode-slider" min="1" max="8" step="1" value="1">
+          </div>
+          <button class="simbtn" id="ring-add">＋ 新增一台伺服器</button>
+          <button class="simbtn" id="ring-remove">－ 移除一台伺服器</button>
+          <button class="simbtn ghost" id="ring-reset">重置</button>
+
+          <p class="sim-note" style="font-size:12px; color:var(--text-dim); margin-top:10px;">對照組(傳統 hash % N,不畫在環上,只看分配結果):</p>
+          <div class="chip-row" id="naiveChips"></div>
+
+          <div class="compare-box">
+            <div class="compare-row"><span>這次操作後,傳統取模雜湊要搬家的 key</span><b id="cmp-naive" style="color:var(--red);">—</b></div>
+            <div class="compare-row"><span>這次操作後,一致性雜湊實際要搬家的 key</span><b id="cmp-consistent" style="color:var(--cyan);">—</b></div>
+          </div>
+          <p class="sim-note" style="font-size:12px; color:var(--text-dim); margin-top:10px;">把「每台伺服器的虛擬節點數」從 1 拉到 8,觀察環上的顏色分佈 — 虛擬節點數越多,每台伺服器分到的 key 越平均,不會有人過勞、有人沒事做。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= virtual nodes ================= -->
+  <section class="sheet" id="s-vnode">
+    <div class="sheetno">SHEET 04</div>
+    <h2 class="sec">基本做法的兩個問題,跟虛擬節點解法</h2>
+
+    <p><b class="mono" style="color:var(--amber);">問題一:分區大小不平均</b></p>
+    <p style="font-size:13.5px;">伺服器會被加入或移除,環上每台伺服器分到的「分區」(partition,兩台相鄰伺服器之間的雜湊空間)大小很難保持一致。例如伺服器剛好雜湊到彼此很靠近的幾個點,就會有人分區超大、有人分區超小:</p>
+    <div class="grid2">
+      <div>
+        <p class="fig-caption">之前 — 4 台伺服器,分區大小天差地遠</p>
+        <svg id="pbA" viewBox="0 0 400 400" style="width:100%; max-width:260px; display:block; margin:0 auto;"></svg>
+        <p style="font-size:12.5px; color:#8fb2cc; text-align:center;">s0、s1 分到的扇形很小,s2、s3 卻分到一大片 — 誰負擔重、誰負擔輕,完全看運氣。</p>
+      </div>
+      <div>
+        <p class="fig-caption">虛擬節點後 — 每台伺服器變成好幾個小分區</p>
+        <svg id="pbB" viewBox="0 0 400 400" style="width:100%; max-width:260px; display:block; margin:0 auto;"></svg>
+        <p style="font-size:12.5px; color:#8fb2cc; text-align:center;">同樣 4 台伺服器,各給 3 個虛擬節點後,分區數變多、每塊也變小變平均,四種顏色的總面積趨於接近。</p>
+      </div>
+    </div>
+
+    <p style="margin-top:28px;"><b class="mono" style="color:var(--amber);">問題二:key 分佈不均勻</b></p>
+    <p style="font-size:13.5px;">就算伺服器本身分區大小還算正常,實際的 key 也可能剛好大量集中落在某一段範圍裡,導致某台伺服器爆量、其他伺服器閒置:</p>
+    <div class="grid2">
+      <div>
+        <p class="fig-caption">之前 — 8 個 key 剛好全部擠進同一段</p>
+        <svg id="pbC" viewBox="0 0 400 400" style="width:100%; max-width:260px; display:block; margin:0 auto;"></svg>
+        <p style="font-size:12.5px; color:#8fb2cc; text-align:center;">4 台伺服器間距其實很平均,但 8 個 key 全部落在 s1 的範圍內,s0、s2、s3 完全沒有負擔。</p>
+      </div>
+      <div>
+        <p class="fig-caption">虛擬節點後 — 同一批 key 被拆開分散</p>
+        <svg id="pbD" viewBox="0 0 400 400" style="width:100%; max-width:260px; display:block; margin:0 auto;"></svg>
+        <p style="font-size:12.5px; color:#8fb2cc; text-align:center;">同樣 8 個 key、同樣的雜湊值,因為環上多了更多虛擬節點可以攔截,被拆分給不同伺服器,不再全部擠向同一台。</p>
+      </div>
+    </div>
+
+    <p style="margin-top:20px;"><b class="tag" style="color:var(--cyan);">解法:虛擬節點(Virtual Nodes)</b> 每台實體伺服器不再只對應環上 1 個點,而是對應<b>多個</b>虛擬節點(例如 s0_0、s0_1、s0_2 都代表伺服器 0)。查找方式不變,一樣是從 key 位置順時針走,找到第一個虛擬節點,再回推它屬於哪台實體伺服器。</p>
+    <table>
+      <tr><th>每台伺服器的虛擬節點數</th><th>標準差(相對平均值)</th></tr>
+      <tr><td>100 個</td><td>約 10%</td></tr>
+      <tr><td>200 個</td><td>約 5%</td></tr>
+    </table>
+    <p style="font-size:13px; color:#8fb2cc; margin-top:-6px;">虛擬節點越多,標準差越小、資料分佈越平均,但也需要更多空間儲存虛擬節點的資訊 — 這是一個可以依系統需求調整的取捨(trade-off)。上面實驗室的滑桿就是在玩這個參數。</p>
+  </section>
+
+  <!-- ================= cases ================= -->
+  <section class="sheet" id="s-cases">
+    <div class="sheetno">SHEET 05 — 課外補充</div>
+    <h2 class="sec">業界真實案例:一致性雜湊被用在哪裡</h2>
+    <p class="sec-sub">書末原文就列出了好幾個真實採用一致性雜湊的系統,這裡挑三個展開說明,點開看細節就好,不看也不影響你理解本章。</p>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 01</span>
+          <div>
+            <div class="case-name">Akamai CDN:一致性雜湊最早的大型實戰場</div>
+            <div class="case-hint">對照 SHEET 03．雜湊環怎麼運作</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">背景</span>一致性雜湊這個概念,最早是由 MIT 的 Karger 等人提出的學術成果,而 Akamai(全球最大的 CDN 服務商之一)正是最早把這套理論真正用進大型正式環境的公司之一 — 這也是為什麼書末的真實案例清單裡,Akamai CDN 被特別列出來。</p>
+        <p><span class="case-tag">為什麼 CDN 特別需要它</span>CDN 的快取伺服器每天都在增增減減(擴容、汰換機器、機房維護),如果用傳統取模雜湊,每次異動都會讓大量使用者請求被重新導向到不同的快取節點,等於瞬間製造一波大規模快取未命中,原本的效能優勢會被自己的維運動作打掉。一致性雜湊讓機器的增減只影響環上一小段範圍,CDN 才能一邊營運一邊擴充,不會因為換機器而全面影響服務品質。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:一致性雜湊不是教科書裡的理論玩具,它是為了解決「CDN 這種節點數量常態性變動的系統」真實痛點而生的技術。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 02</span>
+          <div>
+            <div class="case-name">Amazon Dynamo:虛擬節點的經典教科書實作</div>
+            <div class="case-hint">對照 SHEET 04．虛擬節點</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">背景</span>Amazon 內部的分散式鍵值儲存系統 Dynamo,在其公開論文中把一致性雜湊當作資料分區(partitioning)的核心機制,也是本書第六章要設計的鍵值儲存系統的主要參考對象之一。</p>
+        <p><span class="case-tag">虛擬節點解決異質硬體問題</span>Dynamo 論文裡特別提到一個實務考量:不同伺服器的硬體規格不一定相同,有些機器效能好、容量大,有些比較舊、容量小。靠虛擬節點,可以讓效能好的伺服器分配到<b>更多</b>虛擬節點(因此在環上佔比更大、分到更多 key),效能較差的伺服器分配少一點虛擬節點 — 這跟本章單純「讓分佈更平均」的虛擬節點用法相比,是更進一步的應用:虛擬節點數量本身也能拿來當作「這台機器能扛多少」的控制旋鈕。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:虛擬節點不只是用來「補救隨機分佈不均」,還可以反過來當成一個設計參數,刻意讓強者多扛一點、弱者少扛一點。</p>
+      </div>
+    </details>
+
+    <details class="case">
+      <summary>
+        <div class="case-head">
+          <span class="case-mark">案例 03</span>
+          <div>
+            <div class="case-name">Discord:用類似技巧把 5 百萬人同時在線撐住</div>
+            <div class="case-hint">對照 SHEET 01．重新雜湊的問題</div>
+          </div>
+        </div>
+        <span class="case-plus">+</span>
+      </summary>
+      <div class="case-body">
+        <p><span class="case-tag">背景</span>聊天軟體 Discord 在公開的工程部落格〈How Discord Scaled Elixir to 5,000,000 Concurrent Users〉中,說明了他們如何把使用者所在的群組(guild)分散到後端一群處理節點上。書末原文也把 Discord 列為一致性雜湊的真實採用案例之一。</p>
+        <p><span class="case-tag">為什麼重點是「別讓節點異動影響全局」</span>Discord 的聊天服務要能隨時增減後端處理節點來應付流量變化(跟第一章「無狀態網頁層可以 auto scaling」是同一個精神),如果節點一增減就導致大量群組被重新分配到不同機器,等於每次擴縮容都要付出一次大規模的連線中斷、狀態搬遷代價。用類似一致性雜湊的技巧,讓節點增減只影響一小部分群組,才能讓擴縮容這件事做得又快又不擾民。</p>
+        <p style="color:#8fb2cc; font-size:13px;">對理解本章的幫助:一致性雜湊帶來的「異動範圍可控」,不只是省資料庫查詢成本,對聊天這種需要維持長連線的系統來說,更直接關係到使用者連線會不會被無故中斷。</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= summary ================= -->
+  <section class="sheet" id="s-sum">
+    <div class="sheetno">SHEET 06 — 最終蓋章</div>
+    <h2 class="sec">本章重點回顧</h2>
+    <p class="sec-sub">一致性雜湊也呼應了第一章「分片」小節提過的兩個難題:resharding(重新分片)很痛、名人問題(hotspot key)很麻煩 — 這一章給的就是那兩個問題的具體解法。</p>
+    <ul class="checklist">
+      <li>伺服器增減時,只需重新分配極少數 key</li>
+      <li>資料分佈更平均,水平擴展更容易</li>
+      <li>能緩解「名人問題」(熱點 key 造成單一伺服器過載)</li>
+      <li>查找邏輯:從 key 位置順時針走到第一台伺服器</li>
+      <li>基本做法有兩個問題:分區不均、key 分佈不均</li>
+      <li>虛擬節點是標準解法,節點數越多分佈越平均,但更耗空間</li>
+      <li>新增/移除伺服器時,只有逆時針方向到下一台伺服器之間的 key 受影響</li>
+      <li>真實案例:Dynamo、Cassandra、Discord、Akamai CDN、Maglev</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  筆記整理自 Alex Xu, <i>System Design Interview: An Insider's Guide</i> — 第五章「Design Consistent Hashing」。<br>
+  圖表為重新繪製之互動版本,非原書掃描圖片。
+</footer>
+
+<script>
+(function(){
+  // ============ Sheet 02: step-by-step "how the ring works" diagram ============
+  const HW_SVG_NS = 'http://www.w3.org/2000/svg';
+  const hwSvg = document.getElementById('hwSvg');
+  const HW_SERVERS = {
+    s0: { angle:30,  color:'#5fd4e0' },
+    s1: { angle:120, color:'#f2a93b' },
+    s2: { angle:200, color:'#e8607a' },
+    s3: { angle:300, color:'#8f7ee8' },
+    s4: { angle:100, color:'#4fd48a' }
+  };
+  const HW_KEYS = {
+    key0: { angle:80 },
+    key1: { angle:160 },
+    key2: { angle:340 }
+  };
+  function hwEl(tag, attrs){
+    const e = document.createElementNS(HW_SVG_NS, tag);
+    Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
+    return e;
+  }
+  function hwToXY(angleDeg, radius){
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return { x: 200 + radius * Math.cos(rad), y: 200 + radius * Math.sin(rad) };
+  }
+  function hwAssign(serverIds, keyAngle){
+    const angles = serverIds.map(id => ({ id, angle: HW_SERVERS[id].angle })).sort((a,b) => a.angle - b.angle);
+    let found = angles.find(s => s.angle >= keyAngle);
+    if(!found) found = angles[0];
+    return found.id;
+  }
+
+  const hwSteps = [
+    {
+      title: "① 雜湊空間變成一個環",
+      text: "想像雜湊函式(例如 SHA-1)的輸出範圍是一條數線,從 0 到 2¹⁶⁰－1。把這條數線的頭尾接起來,就變成一個環 — 這就是「一致性雜湊」裡「環」的由來,這時候環上還沒有任何伺服器或 key。",
+      servers: [], keys: [], showArcs:false
+    },
+    {
+      title: "② 把伺服器雜湊到環上",
+      text: "用同一個雜湊函式,把每台伺服器的 IP 或名稱算出一個雜湊值,就能對應到環上的一個位置。這裡先放 4 台伺服器:s0、s1、s2、s3。",
+      servers: ['s0','s1','s2','s3'], keys: [], showArcs:false
+    },
+    {
+      title: "③ 把 key 也雜湊到環上",
+      text: "同樣的雜湊函式,把每個 key 也對應到環上的一個位置。注意這裡沒有用到任何「取模」運算,key 直接對應到環上的一個點,還沒有決定要給哪台伺服器(先用灰色表示未指派)。",
+      servers: ['s0','s1','s2','s3'], keys: ['key0','key1','key2'], neutral:true, showArcs:false
+    },
+    {
+      title: "④ 查找:從 key 的位置順時針走",
+      text: "要知道某個 key 該去哪台伺服器,從它在環上的位置開始,順時針走,遇到的第一台伺服器就是答案。key0 順時針走先碰到 s1;key1 碰到 s2;key2 要繞過 0 點才碰到 s0。",
+      servers: ['s0','s1','s2','s3'], keys: ['key0','key1','key2'], showArcs:true
+    },
+    {
+      title: "⑤ 新增一台伺服器,只有一個 key 受影響",
+      text: "新增 s4 之後,原本 key0 順時針走會先碰到 s1,現在半路被 s4 攔截,所以 key0 改派給 s4。key1、key2 的順時針路徑完全沒變,不受任何影響 — 這就是新增伺服器只影響一小段範圍的原因。",
+      servers: ['s0','s1','s2','s3','s4'], keys: ['key0','key1','key2'], showArcs:true, highlight:{server:'s4', key:'key0'}
+    },
+    {
+      title: "⑥ 移除一台伺服器,一樣只有少數 key 受影響",
+      text: "拔掉 s1 之後(這裡先不考慮 s4),原本指派給 s1 的 key0,順時針方向遇到的下一台伺服器變成 s2,所以 key0 改派給 s2。key1、key2 完全不受影響 — 移除伺服器的代價,一樣被限制在很小的範圍內。",
+      servers: ['s0','s2','s3'], keys: ['key0','key1','key2'], showArcs:true, highlight:{server:'s2', key:'key0'}, ghost:'s1'
+    }
+  ];
+  let hwCurrent = 1;
+
+  function hwRender(){
+    hwSvg.innerHTML = '';
+    const cfg = hwSteps[hwCurrent-1];
+    hwSvg.appendChild(hwEl('circle', { cx:200, cy:200, r:150, fill:'none', stroke:'rgba(234,246,251,0.18)', 'stroke-width':1.5 }));
+
+    // "0" label + wrap mark, always shown
+    const zeroPos = hwToXY(0, 170);
+    const zeroLabel = hwEl('text', { x:zeroPos.x, y:zeroPos.y, 'text-anchor':'middle', 'font-family':'IBM Plex Mono', 'font-size':11, fill:'#8fb2cc' });
+    zeroLabel.textContent = '0 / 2¹⁶⁰－1';
+    hwSvg.appendChild(zeroLabel);
+
+    // ghost (removed) server
+    if(cfg.ghost){
+      const g = HW_SERVERS[cfg.ghost];
+      const gp = hwToXY(g.angle, 150);
+      hwSvg.appendChild(hwEl('rect', { x:gp.x-7, y:gp.y-7, width:14, height:14, fill:'none', stroke:g.color, 'stroke-dasharray':'3,3', 'stroke-width':1.3, opacity:0.6 }));
+      const glp = hwToXY(g.angle, 128);
+      const gLabel = hwEl('text', { x:glp.x, y:glp.y, 'text-anchor':'middle', 'font-family':'IBM Plex Mono', 'font-size':9.5, fill:g.color, opacity:0.7 });
+      gLabel.textContent = cfg.ghost + ' (已移除)';
+      hwSvg.appendChild(gLabel);
+    }
+
+    // servers
+    cfg.servers.forEach(id => {
+      const s = HW_SERVERS[id];
+      const isHi = cfg.highlight && cfg.highlight.server === id;
+      const p = hwToXY(s.angle, 150);
+      const size = isHi ? 16 : 13;
+      hwSvg.appendChild(hwEl('rect', { x:p.x-size/2, y:p.y-size/2, width:size, height:size, fill:s.color, stroke: isHi ? '#fff' : 'none', 'stroke-width': isHi ? 1.5 : 0, rx:3 }));
+      const lp = hwToXY(s.angle, 173);
+      const label = hwEl('text', { x:lp.x, y:lp.y, 'text-anchor':'middle', 'font-family':'IBM Plex Mono', 'font-size':12, fill:s.color, 'font-weight':'600' });
+      label.textContent = id;
+      hwSvg.appendChild(label);
+    });
+
+    // keys + arcs
+    cfg.keys.forEach(id => {
+      const k = HW_KEYS[id];
+      const kp = hwToXY(k.angle, 115);
+      let color = '#6b7f91';
+      let assignedId = null;
+      if(!cfg.neutral && cfg.servers.length){
+        assignedId = hwAssign(cfg.servers, k.angle);
+        color = HW_SERVERS[assignedId].color;
+      }
+      const isHiKey = cfg.highlight && cfg.highlight.key === id;
+      if(cfg.showArcs && assignedId){
+        const sp = hwToXY(HW_SERVERS[assignedId].angle, 150);
+        const line = hwEl('line', { x1:kp.x, y1:kp.y, x2:sp.x, y2:sp.y, stroke:color, 'stroke-width': isHiKey ? 2 : 1, 'stroke-dasharray': isHiKey ? 'none' : '2,3', opacity: isHiKey ? 0.9 : 0.35 });
+        hwSvg.appendChild(line);
+      }
+      const r = isHiKey ? 8 : 6;
+      hwSvg.appendChild(hwEl('circle', { cx:kp.x, cy:kp.y, r:r, fill:color, stroke: isHiKey ? '#fff' : '#081d30', 'stroke-width':1.3 }));
+    });
+
+    document.getElementById('hwCounter').textContent = 'STEP ' + hwCurrent + ' / 6';
+    document.getElementById('hwTitle').textContent = cfg.title;
+    document.getElementById('hwText').textContent = cfg.text;
+    document.getElementById('hwPrev').disabled = hwCurrent === 1;
+    document.getElementById('hwNext').disabled = hwCurrent === 6;
+  }
+  document.getElementById('hwPrev').addEventListener('click', () => { hwCurrent = Math.max(1, hwCurrent-1); hwRender(); });
+  document.getElementById('hwNext').addEventListener('click', () => { hwCurrent = Math.min(6, hwCurrent+1); hwRender(); });
+  hwRender();
+
+  // ============ Sheet 04: problem / virtual-node-solution diagrams ============
+  function pbSectorPath(cx, cy, r, startDeg, endDeg){
+    const toRad = d => (d - 90) * Math.PI / 180;
+    const x1 = cx + r * Math.cos(toRad(startDeg)), y1 = cy + r * Math.sin(toRad(startDeg));
+    const x2 = cx + r * Math.cos(toRad(endDeg)), y2 = cy + r * Math.sin(toRad(endDeg));
+    const large = ((endDeg - startDeg + 360) % 360) > 180 ? 1 : 0;
+    return 'M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+large+' 1 '+x2+','+y2+' Z';
+  }
+  function pbToXY(cx, cy, r, angleDeg){
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+  function drawMiniRing(svgId, points, keys, opts){
+    opts = opts || {};
+    const svg = document.getElementById(svgId);
+    if(!svg) return;
+    svg.innerHTML = '';
+    const cx=200, cy=200, r=150;
+    svg.appendChild(hwEl('circle', { cx:cx, cy:cy, r:r, fill:'none', stroke:'rgba(234,246,251,0.18)', 'stroke-width':1.5 }));
+
+    if(opts.drawSectors){
+      const sorted = points.slice().sort((a,b) => a.angle - b.angle);
+      sorted.forEach((pt, i) => {
+        const prevAngle = i===0 ? sorted[sorted.length-1].angle - 360 : sorted[i-1].angle;
+        svg.appendChild(hwEl('path', { d: pbSectorPath(cx,cy,r,prevAngle,pt.angle), fill:pt.color, opacity:0.14 }));
+      });
+    }
+    // point markers
+    points.forEach(pt => {
+      const p = pbToXY(cx,cy,r,pt.angle);
+      const size = pt.primary===false ? 9 : 13;
+      svg.appendChild(hwEl('rect', { x:p.x-size/2, y:p.y-size/2, width:size, height:size, fill:pt.color, rx:3, opacity: pt.primary===false ? 0.8 : 1 }));
+      if(pt.label){
+        const lp = pbToXY(cx,cy,r+22,pt.angle);
+        const t = hwEl('text', { x:lp.x, y:lp.y, 'text-anchor':'middle', 'font-family':'IBM Plex Mono', 'font-size':12, fill:pt.color, 'font-weight':'600' });
+        t.textContent = pt.label;
+        svg.appendChild(t);
+      }
+    });
+    // keys
+    (keys||[]).forEach(k => {
+      const kp = pbToXY(cx,cy,118,k.angle);
+      svg.appendChild(hwEl('circle', { cx:kp.x, cy:kp.y, r:7, fill:k.color, stroke:'#081d30', 'stroke-width':1.3 }));
+    });
+  }
+
+  const C = { cyan:'#5fd4e0', amber:'#f2a93b', red:'#e8607a', purple:'#8f7ee8' };
+
+  // Diagram A: uneven partitions (4 physical servers clustered unevenly)
+  drawMiniRing('pbA', [
+    { angle:10,  color:C.cyan,  label:'s0' },
+    { angle:30,  color:C.amber, label:'s1' },
+    { angle:55,  color:C.red,   label:'s2' },
+    { angle:230, color:C.purple,label:'s3' }
+  ], [], { drawSectors:true });
+
+  // Diagram B: same 4 servers, each with 3 virtual nodes -> 12 evenly-ish spread points
+  const vnodeAngles = [10,30,55,75,95,115,140,165,190,230,275,320];
+  const vnodeColorCycle = [C.cyan, C.amber, C.red, C.purple];
+  const diagBPoints = vnodeAngles.map((a,i) => ({ angle:a, color:vnodeColorCycle[i % 4], primary:false }));
+  drawMiniRing('pbB', diagBPoints, [], { drawSectors:true });
+
+  // Diagram C: 4 evenly-spaced servers, 8 keys clustered in one partition (s1's range)
+  const evenServers = [
+    { angle:30,  color:C.cyan,  label:'s0' },
+    { angle:120, color:C.amber, label:'s1' },
+    { angle:200, color:C.red,   label:'s2' },
+    { angle:300, color:C.purple,label:'s3' }
+  ];
+  const clusteredKeyAngles = [40,55,65,80,95,100,110,115];
+  const diagCKeys = clusteredKeyAngles.map(a => ({ angle:a, color:C.amber })); // all fall to s1
+  drawMiniRing('pbC', evenServers, diagCKeys, { drawSectors:true });
+
+  // Diagram D: same keys, but ring now has the 12 virtual nodes from diagram B -> keys spread out
+  function assignToPoints(points, keyAngle){
+    const sorted = points.slice().sort((a,b)=>a.angle-b.angle);
+    let found = sorted.find(p => p.angle >= keyAngle);
+    if(!found) found = sorted[0];
+    return found.color;
+  }
+  const diagDKeys = clusteredKeyAngles.map(a => ({ angle:a, color: assignToPoints(diagBPoints, a) }));
+  drawMiniRing('pbD', diagBPoints, diagDKeys, { drawSectors:false });
+
+  const SERVER_POOL = [
+    { id:'s0', hash:80,  color:'#5fd4e0' },
+    { id:'s1', hash:300, color:'#f2a93b' },
+    { id:'s2', hash:520, color:'#e8607a' },
+    { id:'s3', hash:800, color:'#8f7ee8' },
+    { id:'s4', hash:180, color:'#4fd48a' },
+    { id:'s5', hash:620, color:'#e0954f' }
+  ];
+  const KEYS = [
+    { id:'k0', hash:42 }, { id:'k1', hash:157 }, { id:'k2', hash:289 }, { id:'k3', hash:341 },
+    { id:'k4', hash:410 }, { id:'k5', hash:502 }, { id:'k6', hash:581 }, { id:'k7', hash:649 },
+    { id:'k8', hash:702 }, { id:'k9', hash:780 }, { id:'k10', hash:861 }, { id:'k11', hash:935 }
+  ];
+  const RING_MAX = 1000;
+  const svg = document.getElementById('ringSvg');
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  let activeCount = 4;
+  let vnodeCount = 1;
+  let prevConsistent = null;
+  let prevNaive = null;
+
+  function angleOf(hashVal){ return (hashVal / RING_MAX) * 360; }
+  function toXY(angleDeg, radius){
+    const rad = (angleDeg - 90) * Math.PI / 180; // -90 so 0deg is at top
+    return { x: 200 + radius * Math.cos(rad), y: 200 + radius * Math.sin(rad) };
+  }
+
+  function getVirtualNodes(){
+    const servers = SERVER_POOL.slice(0, activeCount);
+    const vnodes = [];
+    servers.forEach(s => {
+      for(let i=0;i<vnodeCount;i++){
+        const h = (s.hash + i*137) % RING_MAX;
+        vnodes.push({ serverId: s.id, color: s.color, hash: h, angle: angleOf(h), primary: i===0 });
+      }
+    });
+    return vnodes;
+  }
+
+  function assignConsistent(vnodes){
+    const sorted = vnodes.slice().sort((a,b) => a.angle - b.angle);
+    const result = {};
+    KEYS.forEach(k => {
+      const ka = angleOf(k.hash);
+      let found = sorted.find(v => v.angle >= ka);
+      if(!found) found = sorted[0];
+      result[k.id] = found;
+    });
+    return result;
+  }
+
+  function assignNaive(){
+    const result = {};
+    KEYS.forEach(k => { result[k.id] = k.hash % activeCount; });
+    return result;
+  }
+
+  function el(tag, attrs){
+    const e = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
+    return e;
+  }
+
+  function render(diffMode){
+    svg.innerHTML = '';
+    svg.appendChild(el('circle', { cx:200, cy:200, r:150, fill:'none', stroke:'rgba(234,246,251,0.18)', 'stroke-width':1.5 }));
+
+    const vnodes = getVirtualNodes();
+    const consistentAssign = assignConsistent(vnodes);
+    const naiveAssign = assignNaive();
+
+    // draw virtual node markers
+    vnodes.forEach(v => {
+      const p = toXY(v.angle, 150);
+      const size = v.primary ? 9 : 5;
+      const rect = el('rect', { x:p.x-size/2, y:p.y-size/2, width:size, height:size, fill:v.color, opacity: v.primary ? 1 : 0.5, rx:2 });
+      svg.appendChild(rect);
+      if(v.primary){
+        const lp = toXY(v.angle, 172);
+        const label = el('text', { x:lp.x, y:lp.y, 'text-anchor':'middle', 'font-family':'IBM Plex Mono', 'font-size':11, fill:v.color, 'dominant-baseline':'middle' });
+        label.textContent = v.serverId;
+        svg.appendChild(label);
+      }
+    });
+
+    // draw keys
+    KEYS.forEach(k => {
+      const ka = angleOf(k.hash);
+      const p = toXY(ka, 122);
+      const assigned = consistentAssign[k.id];
+      const circle = el('circle', { cx:p.x, cy:p.y, r:6, fill:assigned.color, stroke:'#081d30', 'stroke-width':1.3 });
+      svg.appendChild(circle);
+    });
+
+    // legend
+    const legend = document.getElementById('ringLegend');
+    legend.innerHTML = '';
+    SERVER_POOL.slice(0, activeCount).forEach(s => {
+      const span = document.createElement('span');
+      span.innerHTML = '<i style="background:'+s.color+'"></i>' + s.id;
+      legend.appendChild(span);
+    });
+
+    // naive chips
+    const chipRow = document.getElementById('naiveChips');
+    chipRow.innerHTML = '';
+    KEYS.forEach(k => {
+      const idx = naiveAssign[k.id];
+      const color = SERVER_POOL[idx] ? SERVER_POOL[idx].color : '#888';
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.style.background = color;
+      chipRow.appendChild(chip);
+    });
+
+    document.getElementById('ringCounter').textContent = activeCount + ' 台伺服器 · 每台 ' + vnodeCount + ' 個虛擬節點';
+    document.getElementById('v-vnode').textContent = vnodeCount;
+    document.getElementById('ring-remove').disabled = activeCount <= 1;
+    document.getElementById('ring-add').disabled = activeCount >= SERVER_POOL.length;
+
+    if(diffMode){
+      let movedConsistent = 0, movedNaive = 0;
+      if(prevConsistent){
+        KEYS.forEach(k => { if(prevConsistent[k.id].serverId !== consistentAssign[k.id].serverId) movedConsistent++; });
+      }
+      if(prevNaive){
+        KEYS.forEach(k => { if(prevNaive[k.id] !== naiveAssign[k.id]) movedNaive++; });
+      }
+      document.getElementById('cmp-naive').textContent = movedNaive + ' / 12';
+      document.getElementById('cmp-consistent').textContent = movedConsistent + ' / 12';
+    }
+
+    prevConsistent = consistentAssign;
+    prevNaive = naiveAssign;
+  }
+
+  document.getElementById('vnode-slider').addEventListener('input', (e) => {
+    vnodeCount = parseInt(e.target.value, 10);
+    render(false);
+  });
+  document.getElementById('ring-add').addEventListener('click', () => {
+    if(activeCount < SERVER_POOL.length){ activeCount++; render(true); }
+  });
+  document.getElementById('ring-remove').addEventListener('click', () => {
+    if(activeCount > 1){ activeCount--; render(true); }
+  });
+  document.getElementById('ring-reset').addEventListener('click', () => {
+    activeCount = 4; vnodeCount = 1;
+    document.getElementById('vnode-slider').value = 1;
+    prevConsistent = null; prevNaive = null;
+    document.getElementById('cmp-naive').textContent = '—';
+    document.getElementById('cmp-consistent').textContent = '—';
+    render(false);
+  });
+
+  render(false);
+})();
+</script>
+
+</body>
+</html>
